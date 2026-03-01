@@ -6,11 +6,17 @@ const accountSchema = new mongoose.Schema(
       type: Number, // ✅ Number to match user.userId
       required: [true, "User reference is required"],
       index: true,
+      unique: true,
     },
     status: {
       type: String,
       enum: ["active", "inactive", "suspended"],
       default: "active",
+    },
+    balance: {
+      type: Number,
+      default: 0,
+      min: [0, "Balance cannot be negative"],
     },
     currency: {
       type: String,

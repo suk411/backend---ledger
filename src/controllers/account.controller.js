@@ -10,6 +10,16 @@ async function createAccountController(req, res) {
         status: "failed",
       });
     }
+    // 1️⃣ CHECK IF USER ALREADY HAS ACCOUNT
+    const existingAccount = await accountModel.findOne({
+      user: req.user.userId,
+    });
+    if (existingAccount) {
+      return res.status(400).json({
+        message: "You already have an account",
+        status: "failed",
+      });
+    }
 
     const accountData = {
       user: user.userId, // ✅ Number matches schema
