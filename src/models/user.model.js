@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
-// Counter schema for auto-increment
 const counterSchema = new mongoose.Schema({
   _id: { type: String, required: true },
   seq: { type: Number, default: 0 },
@@ -10,7 +9,7 @@ const Counter = mongoose.model("Counter", counterSchema);
 
 const userSchema = new mongoose.Schema(
   {
-    userId: { type: Number, unique: true }, // Your custom ID (546532)
+    userId: { type: Number, unique: true },
     mobile: {
       type: String,
       required: [true, "Mobile number is required"],
@@ -28,17 +27,14 @@ const userSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// Auto-generate userId on new users
 userSchema.pre("save", async function () {
   if (this.isNew) {
     const counter = await Counter.findByIdAndUpdate(
-      { _id: "userId" },
+      "userId", // ✅ Fixed: string ID, not object
       { $inc: { seq: 1 } },
       { new: true, upsert: true },
     );
-
-    // userid start from 32545512ab
-    this.userId = counter.seq + 32545512; // Sets 1,2,3... (pad to 546532 if needed)
+    this.userId = counter.seq + 32545512; // ✅ Starts from 32545513
   }
 
   if (this.isModified("password")) {
@@ -51,4 +47,3 @@ userSchema.methods.comparePassword = async function (password) {
 };
 
 export default mongoose.model("User", userSchema);
-export { Counter }; // Export if needed elsewhere
