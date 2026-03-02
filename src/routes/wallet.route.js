@@ -34,7 +34,7 @@ router.post("/deposit", async (req, res) => {
     const result = await deposit(req.user.userId, amount, orderId, remark);
     res.json({ ...result, status: "success" });
   } catch (error) {
-    res.status(500).json({ message: error.message, status: "failed" });
+    res.status(500).json({ msg: error.msg, status: "failed" });
   }
 });
 

@@ -8,7 +8,7 @@ export async function authMiddleware(req, res, next) {
 
     if (!token) {
       return res.status(401).json({
-        message: "Authentication token is missing",
+        msg: "Authentication token is missing",
         status: "failed",
       });
     }
@@ -20,7 +20,7 @@ export async function authMiddleware(req, res, next) {
     if (!user) {
       console.log("❌ User not found for userId:", decoded.id);
       return res.status(401).json({
-        message: "User not found",
+        msg: "User not found",
         status: "failed",
       });
     }
@@ -34,11 +34,11 @@ export async function authMiddleware(req, res, next) {
 
     next();
   } catch (error) {
-    console.log("❌ Auth error:", error.message);
+    console.log("❌ Auth error:", error.msg);
     return res.status(401).json({
-      message: "Invalid authentication token",
+      msg: "Invalid authentication token",
       status: "failed",
-      error: error.message,
+      error: error.msg,
     });
   }
 }

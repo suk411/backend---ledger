@@ -8,7 +8,7 @@ async function userRegisterController(req, res) {
     const existingUser = await userModel.findOne({ mobile });
     if (existingUser) {
       return res.status(400).json({
-        message: "User already exists",
+        msg: "User already exists",
         status: "failed",
       });
     }
@@ -28,15 +28,15 @@ async function userRegisterController(req, res) {
 
     res.status(201).json({
       user: { id: newUser.userId },
-      message: "Register success",
+      msg: "Register success",
       status: "success",
       token,
     });
   } catch (error) {
     res.status(500).json({
-      message: "Error registering user",
+      msg: "Error registering user",
       status: "failed",
-      error: error.message,
+      error: error.msg,
     });
   }
 }
@@ -49,7 +49,7 @@ async function userLoginController(req, res) {
 
     if (!user) {
       return res.status(404).json({
-        message: "User not found",
+        msg: "User not found",
         status: "failed",
       });
     }
@@ -58,7 +58,7 @@ async function userLoginController(req, res) {
 
     if (!isPasswordValid) {
       return res.status(401).json({
-        message: "Invalid password",
+        msg: "Invalid password",
         status: "failed",
       });
     }
@@ -75,15 +75,15 @@ async function userLoginController(req, res) {
 
     res.status(200).json({
       user: { id: user.userId },
-      message: "Login success",
+      msg: "Login success",
       status: "success",
       token,
     });
   } catch (error) {
     res.status(500).json({
-      message: "Login error",
+      msg: "Login error",
       status: "failed",
-      error: error.message,
+      error: error.msg,
     });
   }
 }

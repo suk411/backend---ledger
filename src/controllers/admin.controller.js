@@ -9,7 +9,7 @@ async function createAdminTransaction(req, res) {
   try {
     const account = await accountModel.findOne({ user: targetUserId });
     if (!account) {
-      return res.status(404).json({ message: "Target user account not found" });
+      return res.status(404).json({ msg: "Target user account not found" });
     }
 
     // Calculate new balance based on transaction type
@@ -32,7 +32,7 @@ async function createAdminTransaction(req, res) {
     });
 
     res.json({
-      message: "Transaction created",
+      msg: "Transaction created",
       targetUserId,
       type,
       amount,
@@ -40,7 +40,7 @@ async function createAdminTransaction(req, res) {
       orderId: ledger.orderId,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ msg: error.msg });
   }
 }
 
@@ -59,9 +59,9 @@ async function getAdminDashboard(req, res) {
     });
   } catch (error) {
     res.status(500).json({
-      message: "Error fetching admin dashboard data",
+      msg: "Error fetching admin dashboard data",
       status: "failed",
-      error: error.message,
+      error: error.msg,
     });
   }
 }
@@ -78,11 +78,11 @@ async function getUserLedgerByAdmin(req, res) {
     if (!ledger || ledger.length === 0) {
       return res
         .status(404)
-        .json({ message: "No transactions found for this user" });
+        .json({ msg: "No transactions found for this user" });
     }
     res.json({ targetUserId, transactions: ledger });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ msg: error.msg });
   }
 }
 

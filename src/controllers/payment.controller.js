@@ -25,7 +25,7 @@ async function initiateDeposit(req, res) {
 
     res.json({ order, gatewayRes });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.msg });
   }
 }
 
@@ -40,8 +40,8 @@ async function paymentCallback(req, res) {
 
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.msg });
   }
 }
 
-export  { initiateDeposit, paymentCallback };
+export { initiateDeposit, paymentCallback };

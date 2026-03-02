@@ -6,7 +6,7 @@ async function createAccountController(req, res) {
     const user = req.user;
     if (!user?.userId) {
       return res.status(401).json({
-        message: "User not authenticated",
+        msg: "User not authenticated",
         status: "failed",
       });
     }
@@ -16,7 +16,7 @@ async function createAccountController(req, res) {
     });
     if (existingAccount) {
       return res.status(400).json({
-        message: "You already have an account",
+        msg: "You already have an account",
         status: "failed",
       });
     }
@@ -28,7 +28,7 @@ async function createAccountController(req, res) {
 
     if (mongoose.connection.readyState !== 1) {
       return res.status(500).json({
-        message: "Database not connected",
+        msg: "Database not connected",
         status: "failed",
       });
     }
@@ -37,14 +37,14 @@ async function createAccountController(req, res) {
 
     res.status(201).json({
       account,
-      message: "Account created successfully",
+      msg: "Account created successfully",
       status: "success",
     });
   } catch (error) {
     res.status(500).json({
-      message: "Error creating account",
+      msg: "Error creating account",
       status: "failed",
-      error: error.message,
+      error: error.msg,
     });
   }
 }
