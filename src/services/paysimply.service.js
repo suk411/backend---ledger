@@ -32,8 +32,8 @@ export async function createPaymentOrder({ merOrderNo, amount, user }) {
     merOrderNo,
     currency: "INR",
     amount: String(amount),
-    returnUrl: process.env.PAYSIMPLY_RETURN_URL,
-    notifyUrl: process.env.PAYSIMPLY_NOTIFY_URL,
+    returnUrl: process.env.SIMPLYPAY_RETURN_URL,
+    notifyUrl: process.env.SIMPLYPAY_NOTIFY_URL,
     extra: {
       name: user?.name || "user",
       email: user?.email || `${user?.userId}@example.com`,
