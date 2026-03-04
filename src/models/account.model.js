@@ -27,5 +27,5 @@ const accountSchema = new mongoose.Schema(
   { timestamps: true }, // ✅ Fixed: timestamps (not timestamp)
 );
 
-accountSchema.index({ userId: 1, status: 1 });
+accountSchema.index({ user: 1, status: 1 });
 export default mongoose.model("Account", accountSchema);

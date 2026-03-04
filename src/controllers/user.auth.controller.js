@@ -19,7 +19,7 @@ async function userRegisterController(req, res) {
     // create user
     const newUser = new userModel({ mobile, password });
     await newUser.save();
-
+    console.log("USER CREATED:", newUser.userId);
     // create account automatically
     await accountModel.create({
       user: newUser.userId,
@@ -27,13 +27,12 @@ async function userRegisterController(req, res) {
       currency: "INR",
       status: "active",
     });
+    console.log("ACCOUNT CREATED:", account);
 
     // generate token
-    const token = jwt.sign(
-      { userId: newUser.userId },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
+    const token = jwt.sign({ userId: newUser.userId }, process.env.JWT_SECRET, {
+      expiresIn: "1d",
+    });
 
     res.cookie("token", token, {
       httpOnly: true,
@@ -47,7 +46,6 @@ async function userRegisterController(req, res) {
       status: "success",
       token,
     });
-
   } catch (error) {
     res.status(500).json({
       msg: "Error registering user",
@@ -79,11 +77,9 @@ async function userLoginController(req, res) {
       });
     }
 
-    const token = jwt.sign(
-      { userId: user.userId },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
+    const token = jwt.sign({ userId: user.userId }, process.env.JWT_SECRET, {
+      expiresIn: "1d",
+    });
 
     res.cookie("token", token, {
       httpOnly: true,
@@ -97,7 +93,6 @@ async function userLoginController(req, res) {
       status: "success",
       token,
     });
-
   } catch (error) {
     res.status(500).json({
       msg: "Login error",
