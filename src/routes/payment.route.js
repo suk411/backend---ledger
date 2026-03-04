@@ -10,6 +10,6 @@ const router = express.Router();
 // Post /api/payment/deposit
 router.post("/deposit", authMiddleware.authMiddleware, initiateDeposit);
 // Post /api/payment/callback
-router.post("/callback", paymentCallback); // No auth middleware, called by payment gateway
+router.post("/callback", paymentCallback);
 
 export default router;

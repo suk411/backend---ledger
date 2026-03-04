@@ -8,12 +8,13 @@ const depositOrderSchema = new mongoose.Schema(
     currency: { type: String, default: "INR" },
     status: {
       type: String,
-      enum: ["PENDING", "SUCCESS", "FAILED", "EXPIRED"],
+      enum: ["PENDING", "SUCCESS", "FAILED", "REFUNDED", "EXPIRED"],
       default: "PENDING",
       index: true,
     },
     gatewayOrderNo: { type: String },
     paymentLinks: { type: Object, default: {} },
+    gatewayResponse: { type: mongoose.Schema.Types.Mixed }, // ✅ Added
     channelName: { type: String, default: "Paysimply" },
     note: { type: String },
   },

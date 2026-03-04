@@ -1,99 +1,160 @@
 import DepositOrder from "../models/depositOrder.model.js";
-import { createPaymentOrder } from "../services/paysimply.service.js";
+import {
+  createPaymentOrder,
+  verifyCallbackSign,
+} from "../services/paysimply.service.js";
 import accountModel from "../models/account.model.js";
+import { deposit } from "./wallet.controller.js";
+
+function mapGatewayStatus(status) {
+  if ([0, 1, -4].includes(status)) return "PENDING";
+  if ([2, 3].includes(status)) return "SUCCESS";
+  if ([-1, -2].includes(status)) return "FAILED";
+  if (status === -3) return "REFUNDED";
+  return "EXPIRED";
+}
 
 async function initiateDeposit(req, res) {
   try {
     const { userId, amount } = req.body;
+    console.log("🌐 POST /api/payment/deposit");
 
-    // ✅ Check if user account exists
-    const account = await accountModel.findOne({ user: userId });
+    // ✅ Check account
+    const account = await accountModel.findOne({ user: req.user.userId });
     if (!account) {
-      console.error(`❌ No account found for userId=${userId}`);
       return res.status(404).json({
-        msg: "User not found",
+        success: false,
+        msg: "User account not found",
         status: "failed",
       });
     }
 
-    const merOrderNo = `MER${Date.now()}${userId}`;
-    const orderId = `DP${Date.now()}${userId}`; // ✅ unique orderId
-
+    const merOrderNo = `MER${Date.now()}${req.user.userId}`;
     console.log(
-      `➡️ Initiating deposit: userId=${userId}, amount=${amount}, merOrderNo=${merOrderNo}`,
+      `➡️ Initiating deposit: userId=${req.user.userId}, amount=${amount}, merOrderNo=${merOrderNo}`,
     );
 
-    // ✅ Create local deposit order
-    const order = await DepositOrder.create({
-      orderId,
-      userId,
-      amount,
-      currency: "INR",
-      status: "PENDING",
-      gatewayOrderNo: merOrderNo,
-    });
-
-    // ✅ Call Paysimply API
+    // ✅ Call Paysimply (WORKING!)
     const gatewayRes = await createPaymentOrder({
       merOrderNo,
       amount,
-      user: { userId },
+      user: {
+        userId: req.user.userId,
+        name: req.user.name,
+        email: req.user.email,
+        mobileNumber: req.user.mobileNumber,
+      },
     });
 
-    order.paymentLinks = gatewayRes.data || {};
-    await order.save();
+    if (gatewayRes.code !== 0) {
+      throw new Error(`Gateway error: ${gatewayRes.msg || "Unknown error"}`);
+    }
 
-    console.log("✅ Deposit order created successfully:", order.orderId);
+    const gwData = gatewayRes.data;
+    console.log("✅ Gateway response:", {
+      orderNo: gwData.orderNo,
+      status: gwData.orderStatus,
+      paymentLink: gwData.params?.paymentLink,
+    });
+
+    // ✅ FIXED CastError: Safe Number conversion
+    const finalUserId = Number(userId || req.user.userId);
+    if (isNaN(finalUserId)) {
+      throw new Error("Invalid user ID");
+    }
+
+    // ✅ Create order (NO MORE CastError!)
+    const order = await DepositOrder.create({
+      orderId: merOrderNo,
+      userId: finalUserId,
+      amount: gwData.amount || amount,
+      currency: gwData.currency || "INR",
+      status: mapGatewayStatus(gwData.orderStatus),
+      gatewayOrderNo: gwData.orderNo,
+      paymentLinks: gwData.params,
+      gatewayResponse: gwData,
+      channelName: "simplyPay",
+    });
+
+    console.log("✅ Deposit order created:", order.orderId);
 
     res.json({
-      order,
-      gatewayRes,
-      msg: "Deposit order initiated successfully",
-      status: "success",
+      success: true,
+      paymentUrl: gwData.params?.paymentLink,
+
+      merOrderNo: order.orderId,
+
+      amount: order.amount,
+      currency: order.currency,
+      status: order.status,
+      msg: "Redirect to paymentUrl",
     });
   } catch (err) {
     console.error("❌ Error in initiateDeposit:", err.message);
     res.status(500).json({
-      msg: "Error initiating deposit",
+      success: false,
+      msg: err.message.includes("userId")
+        ? "Invalid user ID"
+        : "Error initiating deposit",
       status: "failed",
-      error: err.message,
     });
   }
 }
 
 async function paymentCallback(req, res) {
   try {
-    const { merOrderNo, status } = req.body;
+    const body = req.body;
     console.log(
-      `➡️ Callback received: merOrderNo=${merOrderNo}, status=${status}`,
+      `➡️ Callback: merOrderNo=${body.merOrderNo || body.data?.merOrderNo}`,
     );
 
-    const order = await DepositOrder.findOne({ gatewayOrderNo: merOrderNo });
-    if (!order) {
-      console.error(`❌ DepositOrder not found for merOrderNo=${merOrderNo}`);
-      return res.status(404).json({
-        msg: "Order not found",
-        status: "failed",
-      });
+    if (body.code !== 0) {
+      return res
+        .status(400)
+        .json({ success: false, msg: "Invalid callback", status: "failed" });
     }
 
-    order.status = status;
-    await order.save();
+    if (!verifyCallbackSign(body)) {
+      return res
+        .status(401)
+        .json({ success: false, msg: "Signature mismatch", status: "failed" });
+    }
 
-    console.log(`✅ Order ${order.orderId} updated to status=${status}`);
+    const gwData = body.data;
+    const merOrderNo = body.merOrderNo || gwData?.merOrderNo;
 
-    res.json({
-      success: true,
-      msg: "Payment callback processed successfully",
-      status: "success",
-    });
+    const order = await DepositOrder.findOne({ orderId: merOrderNo });
+    if (!order) {
+      return res
+        .status(404)
+        .json({ success: false, msg: "Order not found", status: "failed" });
+    }
+
+    const newStatus = mapGatewayStatus(gwData.orderStatus);
+    if (order.status !== newStatus) {
+      order.status = newStatus;
+      order.gatewayResponse = gwData;
+      await order.save();
+
+      if (newStatus === "SUCCESS") {
+        await deposit(
+          order.userId,
+          order.amount,
+          order.orderId,
+          "Deposit via Paysimply",
+        );
+        console.log(`✅ Credited ${order.userId}: ₹${order.amount}`);
+      }
+    }
+
+    res
+      .status(200)
+      .json({ success: true, msg: "Processed", orderId: merOrderNo });
   } catch (err) {
-    console.error("❌ Error in paymentCallback:", err.message);
-    res.status(500).json({
-      msg: "Error processing callback",
-      status: "failed",
-      error: err.message,
-    });
+    console.error("❌ Callback error:", err.message);
+    res
+      .status(500)
+      .json({ success: false, msg: "Callback failed", status: "failed" });
   }
 }
 

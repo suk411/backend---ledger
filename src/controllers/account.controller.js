@@ -22,16 +22,9 @@ async function createAccountController(req, res) {
     }
 
     const accountData = {
-      user: user.userId, // ✅ Number matches schema
+      user: req.user.userId, // ✅ Number matches schema
       currency: "INR", // ✅ Required field
     };
-
-    if (mongoose.connection.readyState !== 1) {
-      return res.status(500).json({
-        msg: "Database not connected",
-        status: "failed",
-      });
-    }
 
     const account = await accountModel.create(accountData);
 

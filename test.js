@@ -6,7 +6,7 @@ const SECRET = "28622e9a4ce2df9c60c2863f73114a30";
 
 const params = {
   appId: APP_ID,
-  merOrderNo: "2348590239848u209442",
+  merOrderNo: "234859023984809542",
   currency: "INR",
   amount: "500",
   returnUrl: "https://your-site.com/return",
