@@ -1,11 +1,14 @@
 import userModel from "../models/user.model.js";
+import accountModel from "../models/account.model.js";
 import jwt from "jsonwebtoken";
 
 async function userRegisterController(req, res) {
   const { mobile, password } = req.body;
 
   try {
+    // check if user exists
     const existingUser = await userModel.findOne({ mobile });
+
     if (existingUser) {
       return res.status(400).json({
         msg: "User already exists",
@@ -13,12 +16,24 @@ async function userRegisterController(req, res) {
       });
     }
 
+    // create user
     const newUser = new userModel({ mobile, password });
     await newUser.save();
 
-    const token = jwt.sign({ id: newUser.userId }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
+    // create account automatically
+    await accountModel.create({
+      user: newUser.userId,
+      balance: 0,
+      currency: "INR",
+      status: "active",
     });
+
+    // generate token
+    const token = jwt.sign(
+      { userId: newUser.userId },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
 
     res.cookie("token", token, {
       httpOnly: true,
@@ -32,11 +47,12 @@ async function userRegisterController(req, res) {
       status: "success",
       token,
     });
+
   } catch (error) {
     res.status(500).json({
       msg: "Error registering user",
       status: "failed",
-      error: error.msg,
+      error: error.message,
     });
   }
 }
@@ -63,9 +79,11 @@ async function userLoginController(req, res) {
       });
     }
 
-    const token = jwt.sign({ id: user.userId }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
-    });
+    const token = jwt.sign(
+      { userId: user.userId },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
 
     res.cookie("token", token, {
       httpOnly: true,
@@ -79,11 +97,12 @@ async function userLoginController(req, res) {
       status: "success",
       token,
     });
+
   } catch (error) {
     res.status(500).json({
       msg: "Login error",
       status: "failed",
-      error: error.msg,
+      error: error.message,
     });
   }
 }
