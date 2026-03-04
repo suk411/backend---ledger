@@ -15,10 +15,10 @@ export async function authMiddleware(req, res, next) {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await userModel.findOne({ userId: decoded.id });
+    const user = await userModel.findOne({ userId: decoded.userId });
 
     if (!user) {
-      console.log("❌ User not found for userId:", decoded.id);
+      console.log("❌ User not found for userId:", decoded.userId);
       return res.status(401).json({
         msg: "User not found",
         status: "failed",
@@ -34,11 +34,11 @@ export async function authMiddleware(req, res, next) {
 
     next();
   } catch (error) {
-    console.log("❌ Auth error:", error.msg);
+    console.log("❌ Auth error:", error.message);
     return res.status(401).json({
       msg: "Invalid authentication token",
       status: "failed",
-      error: error.msg,
+      error: error.message,
     });
   }
 }
