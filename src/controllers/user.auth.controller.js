@@ -21,7 +21,7 @@ async function userRegisterController(req, res) {
     await newUser.save();
     console.log("USER CREATED:", newUser.userId);
     // create account automatically
-    await accountModel.create({
+    const account = await accountModel.create({
       user: newUser.userId,
       balance: 0,
       currency: "INR",
