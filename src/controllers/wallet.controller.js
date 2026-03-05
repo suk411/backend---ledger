@@ -21,7 +21,7 @@ async function deposit(userId, amount, orderId, remark = "Deposit") {
       accountModel.findOneAndUpdate(
         { user: userId },
         { $inc: { balance: amount } },
-        { new: true, session },
+        { returnDocument: "after", session },
       ),
       transactionLedgerModel.create(
         [
@@ -67,7 +67,7 @@ async function withdraw(userId, amount, orderId, remark = "Withdrawal") {
       accountModel.findOneAndUpdate(
         { user: userId, balance: { $gte: amount } }, // Atomic check
         { $inc: { balance: -amount } },
-        { new: true, session },
+        { returnDocument: "after", session },
       ),
       transactionLedgerModel.create(
         [
@@ -102,11 +102,10 @@ async function getBalance(userId) {
 
 async function getLedger(userId, limit = 50) {
   return await transactionLedgerModel
-    .find({ userId })                // only this user's transactions
-    .sort({ createdAt: -1 })         // newest first
-    .limit(limit)                    // limit results
-    .select('-_id -__v');            // exclude _id and __v
+    .find({ userId }) // only this user's transactions
+    .sort({ createdAt: -1 }) // newest first
+    .limit(limit) // limit results
+    .select("-_id -__v"); // exclude _id and __v
 }
-
 
 export { deposit, withdraw, getBalance, getLedger };

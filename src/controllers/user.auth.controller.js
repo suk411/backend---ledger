@@ -1,36 +1,71 @@
-import userModel from "../models/user.model.js";
+import userModel, { generateUserId } from "../models/user.model.js";
 import accountModel from "../models/account.model.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
+
+// ================= REGISTER =================
 
 async function userRegisterController(req, res) {
   const { mobile, password } = req.body;
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
   try {
-    // check if user exists
-    const existingUser = await userModel.findOne({ mobile });
+    // Check if user already exists
+    const existingUser = await userModel.findOne({ mobile }).session(session);
 
     if (existingUser) {
+      await session.abortTransaction();
       return res.status(400).json({
         msg: "User already exists",
         status: "failed",
       });
     }
 
-    // create user
-    const newUser = new userModel({ mobile, password });
-    await newUser.save();
-    console.log("USER CREATED:", newUser.userId);
-    // create account automatically
-    const account = await accountModel.create({
-      user: newUser.userId,
-      balance: 0,
-      currency: "INR",
-      status: "active",
-    });
-    console.log("ACCOUNT CREATED:", account);
+    // Generate userId atomically within transaction
+    const userId = await generateUserId(session);
 
-    // generate token
-    const token = jwt.sign({ userId: newUser.userId }, process.env.JWT_SECRET, {
+    // Create user with generated userId
+    const newUser = await userModel.create(
+      [
+        {
+          userId,
+          mobile,
+          password,
+        },
+      ],
+      { session },
+    );
+
+    if (!newUser || !newUser[0]) {
+      throw new Error("Failed to create user");
+    }
+
+    console.log("USER CREATED:", newUser[0].userId);
+
+    // Create account with same userId in same transaction
+    const account = await accountModel.create(
+      [
+        {
+          user: userId,
+          balance: 0,
+          currency: "INR",
+          status: "active",
+        },
+      ],
+      { session },
+    );
+
+    if (!account || !account[0]) {
+      throw new Error("Failed to create account");
+    }
+
+    console.log("ACCOUNT CREATED:", account[0].user);
+
+    // Commit transaction
+    await session.commitTransaction();
+
+    const token = jwt.sign({ userId }, process.env.JWT_SECRET, {
       expiresIn: "1d",
     });
 
@@ -41,19 +76,24 @@ async function userRegisterController(req, res) {
     });
 
     res.status(201).json({
-      user: { id: newUser.userId },
+      user: { id: userId },
       msg: "Register success",
       status: "success",
       token,
     });
   } catch (error) {
+    await session.abortTransaction();
     res.status(500).json({
       msg: "Error registering user",
       status: "failed",
       error: error.message,
     });
+  } finally {
+    session.endSession();
   }
 }
+
+// ================= LOGIN =================
 
 async function userLoginController(req, res) {
   const { mobile, password } = req.body;

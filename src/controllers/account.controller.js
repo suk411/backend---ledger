@@ -15,8 +15,8 @@ async function getUserBalanceController(req, res) {
 
     res.status(200).json({
       status: "success",
+      userId: account.user,
       balance: account.balance,
-      currency: account.currency,
     });
   } catch (error) {
     res.status(500).json({
