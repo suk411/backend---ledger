@@ -13,6 +13,26 @@ const app = express();
 
 app.use(express.json());
 app.use(cookieParser());
+// CORS
+const ALLOWED_ORIGINS =
+  process.env.CORS_ORIGINS?.split(",").map((s) => s.trim()).filter(Boolean) || [
+    "https://1xking.vercel.app",
+    "https://emerald-admin-suite.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:5173",
+  ];
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      callback(null, ALLOWED_ORIGINS.includes(origin));
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
+app.options("*", cors());
 
 // ✅ Global request logger
 app.use((req, res, next) => {
