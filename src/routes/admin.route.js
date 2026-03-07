@@ -30,4 +30,11 @@ router.get(
   adminMiddleware,
   adminController.getUserLedgerByAdmin,
 );
+// Get /api/admin/search?userId=123
+router.get(
+  "/search",
+  authMiddleware.authMiddleware,
+  adminMiddleware,
+  adminController.searchUserOrAccount,
+);
 export default router;

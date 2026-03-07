@@ -72,7 +72,6 @@ async function initiateDeposit(req, res) {
       status: mapGatewayStatus(gwData.orderStatus),
       gatewayOrderNo: gwData.orderNo,
       paymentLinks: gwData.params,
-      gatewayResponse: gwData,
       channelName: "simplyPay",
     });
 
@@ -133,7 +132,6 @@ async function paymentCallback(req, res) {
     const newStatus = mapGatewayStatus(gwData.orderStatus);
     if (order.status !== newStatus) {
       order.status = newStatus;
-      order.gatewayResponse = gwData;
       await order.save();
 
       if (newStatus === "SUCCESS") {

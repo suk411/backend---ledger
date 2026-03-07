@@ -1,5 +1,6 @@
 import accountModel from "../models/account.model.js";
 import transactionLedgerModel from "../models/transactionLedger.model.js";
+import userModel from "../models/user.model.js";
 
 //Admin create transaction for any user
 
@@ -86,8 +87,40 @@ async function getUserLedgerByAdmin(req, res) {
   }
 }
 
+async function searchUserOrAccount(req, res) {
+  const { userId } = req.query;
+  const idNum = Number(userId);
+  if (!userId || Number.isNaN(idNum)) {
+    return res.status(400).json({ msg: "Invalid or missing userId" });
+  }
+  try {
+    const [user, account] = await Promise.all([
+      userModel.findOne({ userId: idNum }).select("-password -__v"),
+      accountModel.findOne({ user: idNum }).select("-__v"),
+    ]);
+    if (!user && !account) {
+      return res.status(404).json({ msg: "User or account not found" });
+    }
+    res.json({
+      user: user
+        ? {
+            userId: user.userId,
+            mobile: user.mobile,
+            admin: user.admin,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+          }
+        : null,
+      account,
+    });
+  } catch (error) {
+    res.status(500).json({ msg: error.message });
+  }
+}
+
 export default {
   createAdminTransaction,
   getAdminDashboard,
   getUserLedgerByAdmin,
+  searchUserOrAccount,
 };

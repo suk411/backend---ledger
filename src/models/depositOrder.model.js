@@ -14,7 +14,6 @@ const depositOrderSchema = new mongoose.Schema(
     },
     gatewayOrderNo: { type: String },
     paymentLinks: { type: Object, default: {} },
-    gatewayResponse: { type: mongoose.Schema.Types.Mixed }, // ✅ Added
     channelName: { type: String, default: "Paysimply" },
     note: { type: String },
   },
