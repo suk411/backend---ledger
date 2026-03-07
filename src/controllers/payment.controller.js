@@ -145,9 +145,7 @@ async function paymentCallback(req, res) {
       }
     }
 
-    res
-      .status(200)
-      .json({ success: true, msg: "Processed", orderId: merOrderNo });
+    res.status(200).type("text").send("success");
   } catch (err) {
     console.error("❌ Callback error:", err.message);
     res
