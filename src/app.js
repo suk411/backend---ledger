@@ -32,7 +32,6 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
-app.options("*", cors());
 
 // ✅ Global request logger
 app.use((req, res, next) => {
