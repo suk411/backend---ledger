@@ -103,6 +103,12 @@ async function initiateDeposit(req, res) {
 async function paymentCallback(req, res) {
   try {
     const body = req.body;
+    try {
+      console.log("⬅️ Callback headers:", JSON.stringify(req.headers, null, 2));
+    } catch {}
+    try {
+      console.log("⬅️ Callback body:", JSON.stringify(body, null, 2));
+    } catch {}
     console.log(
       `➡️ Callback: merOrderNo=${body.merOrderNo || body.data?.merOrderNo}`,
     );
@@ -120,6 +126,9 @@ async function paymentCallback(req, res) {
     }
 
     const gwData = body.data;
+    try {
+      console.log("⬅️ Callback data:", JSON.stringify(gwData, null, 2));
+    } catch {}
     const merOrderNo = body.merOrderNo || gwData?.merOrderNo;
 
     const order = await DepositOrder.findOne({ orderId: merOrderNo });
@@ -131,6 +140,14 @@ async function paymentCallback(req, res) {
 
     const newStatus = mapGatewayStatus(gwData.orderStatus);
     if (order.status !== newStatus) {
+      console.log(
+        "🔄 Order status update:",
+        JSON.stringify(
+          { orderId: order.orderId, from: order.status, to: newStatus },
+          null,
+          2,
+        ),
+      );
       order.status = newStatus;
       await order.save();
 
