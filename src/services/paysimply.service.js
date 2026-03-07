@@ -7,8 +7,16 @@ dotenv.config();
 const APP_ID = process.env.SIMPLYPAY_APP_ID;
 const SECRET = process.env.SIMPLYPAY_SECRET_KEY;
 const BASE_URL = process.env.SIMPLYPAY_BASE_URL;
-const RETURN_URL = process.env.SIMPLYPAY_RETURN_URL;
-const NOTIFY_URL = process.env.SIMPLYPAY_NOTIFY_URL;
+function cleanUrl(value) {
+  if (!value) return "";
+  return String(value)
+    .trim()
+    .replace(/^`+|`+$/g, "")
+    .replace(/^"+|"+$/g, "")
+    .replace(/^'+|'+$/g, "");
+}
+const RETURN_URL = cleanUrl(process.env.SIMPLYPAY_RETURN_URL);
+const NOTIFY_URL = cleanUrl(process.env.SIMPLYPAY_NOTIFY_URL);
 
 function parseExtra(extra) {
   const keys = Object.keys(extra).sort();
@@ -77,9 +85,13 @@ export async function createPaymentOrder({ merOrderNo, amount, user }) {
     });
     return res.data;
   } catch (error) {
-    console.error("❌ API Error:", error.response?.data);
-    throw new Error(
-      error.response?.data?.msg || error.response?.data?.error || error.message,
-    );
+    const apiErr = error.response?.data;
+    console.error("❌ API Error:", apiErr || error.message);
+    const details =
+      apiErr?.msg ||
+      apiErr?.error ||
+      (apiErr ? JSON.stringify(apiErr) : null) ||
+      error.message;
+    throw new Error(details);
   }
 }
