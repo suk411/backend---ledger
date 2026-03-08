@@ -34,4 +34,11 @@ router.get(
   adminMiddleware,
   adminController.getUserTransactionsPaginated,
 );
+// Agent stats - invite tree and totals
+router.get(
+  "/agent-stats",
+  authMiddleware.authMiddleware,
+  adminMiddleware,
+  adminController.getAgentReferralStatsAdmin,
+);
 export default router;

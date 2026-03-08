@@ -190,6 +190,90 @@ async function getUserTransactionsPaginated(req, res) {
   }
 }
 
+async function getAgentReferralStatsAdmin(req, res) {
+  try {
+    const { userId, page = 1, limit = 50 } = req.query;
+    const idNum = Number(userId);
+    if (!userId || Number.isNaN(idNum)) {
+      return res.status(400).json({ msg: "Invalid or missing userId" });
+    }
+
+    const agent = await userModel
+      .findOne({ userId: idNum })
+      .select("userId mobile admin referredBy createdAt");
+    if (!agent) {
+      return res.status(404).json({ msg: "Agent user not found" });
+    }
+
+    const inviter = agent.referredBy
+      ? await userModel
+          .findOne({ userId: agent.referredBy })
+          .select("userId mobile createdAt")
+      : null;
+
+    const lm = Math.max(1, Math.min(100, Number(limit) || 50));
+    const pg = Math.max(1, Number(page) || 1);
+    const skip = (pg - 1) * lm;
+
+    const [invitees, totalInvitees] = await Promise.all([
+      userModel
+        .find({ referredBy: idNum })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(lm)
+        .select("userId mobile createdAt"),
+      userModel.countDocuments({ referredBy: idNum }),
+    ]);
+
+    const inviteeIds = invitees.map((u) => u.userId);
+    let totalsByUser = {};
+    if (inviteeIds.length > 0) {
+      const sums = await transactionLedgerModel.aggregate([
+        { $match: { userId: { $in: inviteeIds }, type: { $in: ["DEPOSIT", "WITHDRAW"] } } },
+        {
+          $group: {
+            _id: { userId: "$userId", type: "$type" },
+            total: { $sum: "$amount" },
+          },
+        },
+      ]);
+      for (const row of sums) {
+        const uid = row._id.userId;
+        const t = row._id.type;
+        if (!totalsByUser[uid]) totalsByUser[uid] = { deposit: 0, withdraw: 0 };
+        if (t === "DEPOSIT") totalsByUser[uid].deposit += row.total;
+        if (t === "WITHDRAW") totalsByUser[uid].withdraw += row.total;
+      }
+    }
+
+    const items = invitees.map((u) => ({
+      userId: u.userId,
+      mobile: u.mobile,
+      createdAt: u.createdAt,
+      totals: totalsByUser[u.userId] || { deposit: 0, withdraw: 0 },
+    }));
+
+    res.json({
+      agent: {
+        userId: agent.userId,
+        mobile: agent.mobile,
+        admin: agent.admin,
+        referredBy: agent.referredBy || null,
+        createdAt: agent.createdAt,
+      },
+      inviter: inviter
+        ? { userId: inviter.userId, mobile: inviter.mobile, createdAt: inviter.createdAt }
+        : null,
+      totalInvitees,
+      page: pg,
+      limit: lm,
+      invitees: items,
+    });
+  } catch (error) {
+    res.status(500).json({ msg: error.message });
+  }
+}
+
 export default {
   createAdminTransaction,
   getAdminDashboard,
@@ -197,4 +281,5 @@ export default {
   searchUserOrAccount,
   getAdminDepositOrders,
   getUserTransactionsPaginated,
+  getAgentReferralStatsAdmin,
 };
