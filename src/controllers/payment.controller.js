@@ -69,7 +69,7 @@ async function initiateDeposit(req, res) {
       status: mapGatewayStatus(gwData.orderStatus),
       gatewayOrderNo: gwData.orderNo,
       paymentLinks: gwData.params,
-      channelName: "simplyPay",
+      channelName: "SimplyPay",
     });
 
     console.log("✅ Deposit order created:", order.orderId);
@@ -86,12 +86,12 @@ async function initiateDeposit(req, res) {
       msg: "Redirect to paymentUrl",
     });
   } catch (err) {
-    console.error("❌ Error in initiateDeposit:", err.message);
+    console.error("❌ Failed in create deposit:", err.message);
     res.status(500).json({
       success: false,
       msg: err.message.includes("userId")
         ? "Invalid user ID"
-        : "Error initiating deposit",
+        : "Failed in create deposit",
       status: "failed",
     });
   }
