@@ -37,4 +37,10 @@ router.get(
   adminMiddleware,
   adminController.searchUserOrAccount,
 );
+router.get(
+  "/transactions",
+  authMiddleware.authMiddleware,
+  adminMiddleware,
+  adminController.getUserTransactionsPaginated,
+);
 export default router;

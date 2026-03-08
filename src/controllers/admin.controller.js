@@ -118,9 +118,38 @@ async function searchUserOrAccount(req, res) {
   }
 }
 
+async function getUserTransactionsPaginated(req, res) {
+  const { userId, page = 1, limit = 25 } = req.query;
+  const idNum = Number(userId);
+  const pg = Math.max(1, Number(page) || 1);
+  const lm = Math.max(1, Math.min(100, Number(limit) || 25));
+  if (!userId || Number.isNaN(idNum)) {
+    return res.status(400).json({ msg: "Invalid or missing userId" });
+  }
+  try {
+    const skip = (pg - 1) * lm;
+    const [items, total] = await Promise.all([
+      transactionLedgerModel
+        .find({ userId: idNum })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(lm)
+        .select("-_id -__v"),
+      transactionLedgerModel.countDocuments({ userId: idNum }),
+    ]);
+    if (!items || items.length === 0) {
+      return res.status(404).json({ msg: "No transactions found for this user" });
+    }
+    res.json({ userId: idNum, total, page: pg, limit: lm, items });
+  } catch (error) {
+    res.status(500).json({ msg: error.message });
+  }
+}
+
 export default {
   createAdminTransaction,
   getAdminDashboard,
   getUserLedgerByAdmin,
   searchUserOrAccount,
+  getUserTransactionsPaginated,
 };
