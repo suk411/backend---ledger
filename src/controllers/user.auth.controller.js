@@ -76,7 +76,7 @@ async function userRegisterController(req, res) {
     });
 
     res.status(201).json({
-      user: { id: userId },
+      user: { id: userId, admin: false },
       msg: "Register success",
       status: "success",
       token,
@@ -128,7 +128,7 @@ async function userLoginController(req, res) {
     });
 
     res.status(200).json({
-      user: { id: user.userId },
+      user: { id: user.userId, admin: user.admin },
       msg: "Login success",
       status: "success",
       token,

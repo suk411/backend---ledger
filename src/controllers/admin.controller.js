@@ -1,6 +1,7 @@
 import accountModel from "../models/account.model.js";
 import transactionLedgerModel from "../models/transactionLedger.model.js";
 import userModel from "../models/user.model.js";
+import DepositOrder from "../models/depositOrder.model.js";
 
 //Admin create transaction for any user
 
@@ -49,20 +50,22 @@ async function createAdminTransaction(req, res) {
 
 async function getAdminDashboard(req, res) {
   try {
-    const totalUsers = await accountModel.countDocuments();
-    const totalBalance = await accountModel.aggregate([
-      { $group: { userId: null, total: { $sum: "$balance" } } },
+    const [totalUsers, deposits] = await Promise.all([
+      accountModel.countDocuments(),
+      DepositOrder.aggregate([
+        { $match: { status: "SUCCESS" } },
+        { $group: { _id: null, total: { $sum: "$amount" } } },
+      ]),
     ]);
-
     res.json({
       totalUsers,
-      totalBalance: totalBalance[0]?.total || 0,
+      totalDeposits: deposits[0]?.total || 0,
     });
   } catch (error) {
     res.status(500).json({
       msg: "Error fetching admin dashboard data",
       status: "failed",
-      error: error.msg,
+      error: error.message,
     });
   }
 }
@@ -118,6 +121,47 @@ async function searchUserOrAccount(req, res) {
   }
 }
 
+async function getAdminDepositOrders(req, res) {
+  const { orderId, userId, page = 1, limit = 25 } = req.query;
+  try {
+    if (!orderId && !userId) {
+      return res
+        .status(400)
+        .json({ status: "failed", msg: "orderId or userId is required" });
+    }
+    if (orderId) {
+      const order = await DepositOrder.findOne({ orderId }).select("-__v");
+      if (!order) {
+        return res.status(404).json({ status: "failed", msg: "Order not found" });
+      }
+      return res.json({ status: "success", items: [order] });
+    }
+    const idNum = Number(userId);
+    if (Number.isNaN(idNum)) {
+      return res.status(400).json({ status: "failed", msg: "Invalid userId" });
+    }
+    const lm = Math.max(1, Math.min(100, Number(limit) || 25));
+    const pg = Math.max(1, Number(page) || 1);
+    const skip = (pg - 1) * lm;
+    const [items, total] = await Promise.all([
+      DepositOrder.find({ userId: idNum })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(lm)
+        .select("-__v"),
+      DepositOrder.countDocuments({ userId: idNum }),
+    ]);
+    if (items.length === 0) {
+      return res
+        .status(404)
+        .json({ status: "failed", msg: "No orders found for user" });
+    }
+    res.json({ status: "success", userId: idNum, total, page: pg, limit: lm, items });
+  } catch (error) {
+    res.status(500).json({ status: "failed", msg: error.message });
+  }
+}
+
 async function getUserTransactionsPaginated(req, res) {
   const { userId, page = 1, limit = 25 } = req.query;
   const idNum = Number(userId);
@@ -151,5 +195,6 @@ export default {
   getAdminDashboard,
   getUserLedgerByAdmin,
   searchUserOrAccount,
+  getAdminDepositOrders,
   getUserTransactionsPaginated,
 };

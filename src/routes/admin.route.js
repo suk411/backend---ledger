@@ -4,17 +4,8 @@ import authMiddleware from "../middleware/user.auth.middleware.js";
 import { adminMiddleware } from "../middleware/admin.auth.middleware.js";
 const router = express.Router();
 
-// PROTECTED: Admin only
-// Post /api/admin/transactions
-router.post(
-  "/transaction",
-  authMiddleware.authMiddleware,
-  adminMiddleware,
-  adminController.createAdminTransaction,
-);
-
-//admin dashboard
-// Get /api/admin/dashboard
+// Admin only
+// Dashboard
 router.get(
   "/dashboard",
   authMiddleware.authMiddleware,
@@ -22,21 +13,21 @@ router.get(
   adminController.getAdminDashboard,
 );
 
-//Admin fetch ledger of any user
-// Get /api/admin/ledger?targetUserId=xxx&limit=50
+// User + account details
 router.get(
-  "/ledger",
-  authMiddleware.authMiddleware,
-  adminMiddleware,
-  adminController.getUserLedgerByAdmin,
-);
-// Get /api/admin/search?userId=123
-router.get(
-  "/search",
+  "/user",
   authMiddleware.authMiddleware,
   adminMiddleware,
   adminController.searchUserOrAccount,
 );
+// Deposit orders - by orderId or by userId (paginated)
+router.get(
+  "/deposits",
+  authMiddleware.authMiddleware,
+  adminMiddleware,
+  adminController.getAdminDepositOrders,
+);
+// Transactions - by userId (paginated)
 router.get(
   "/transactions",
   authMiddleware.authMiddleware,
