@@ -6,7 +6,7 @@ import mongoose from "mongoose";
 // ================= REGISTER =================
 
 async function userRegisterController(req, res) {
-  const { mobile, password } = req.body;
+  const { mobile, password, referralCode } = req.body;
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -25,6 +25,15 @@ async function userRegisterController(req, res) {
     // Generate userId atomically within transaction
     const userId = await generateUserId(session);
 
+    let referredBy = null;
+    if (referralCode) {
+      const inviterId = Number(referralCode);
+      if (!Number.isNaN(inviterId)) {
+        const inviter = await userModel.findOne({ userId: inviterId }).session(session);
+        if (inviter) referredBy = inviter.userId;
+      }
+    }
+
     // Create user with generated userId
     const newUser = await userModel.create(
       [
@@ -32,6 +41,8 @@ async function userRegisterController(req, res) {
           userId,
           mobile,
           password,
+          inviteCode: String(userId),
+          referredBy,
         },
       ],
       { session },
@@ -76,7 +87,7 @@ async function userRegisterController(req, res) {
     });
 
     res.status(201).json({
-      user: { id: userId, admin: false },
+      user: { id: userId, admin: false, inviteCode: String(userId), referredBy },
       msg: "Register success",
       status: "success",
       token,
@@ -142,4 +153,35 @@ async function userLoginController(req, res) {
   }
 }
 
-export default { userRegisterController, userLoginController };
+async function getReferralStats(req, res) {
+  try {
+    const currentId = req.user.userId;
+    const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 20));
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const skip = (page - 1) * limit;
+    const [total, users] = await Promise.all([
+      userModel.countDocuments({ referredBy: currentId }),
+      userModel
+        .find({ referredBy: currentId })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .select("userId mobile createdAt"),
+    ]);
+    const inviteCode = String(currentId);
+    const inviteLink = `https://1xking.vercel.app/register?ref=${inviteCode}`;
+    res.json({
+      status: "success",
+      inviteCode,
+      inviteLink,
+      total,
+      page,
+      limit,
+      users,
+    });
+  } catch (error) {
+    res.status(500).json({ status: "failed", msg: error.message });
+  }
+}
+
+export default { userRegisterController, userLoginController, getReferralStats };

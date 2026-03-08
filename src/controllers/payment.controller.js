@@ -26,7 +26,7 @@ async function initiateDeposit(req, res) {
       });
     }
 
-    const merOrderNo = `MER${Date.now()}${req.user.userId}`;
+    const merOrderNo = `ODR${Date.now()}${req.user.userId}`;
     console.log(
       `➡️ Initiating deposit: userId=${req.user.userId}, amount=${amount}, merOrderNo=${merOrderNo}`,
     );

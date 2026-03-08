@@ -43,6 +43,16 @@ const userSchema = new mongoose.Schema(
       type: Number,
       unique: true,
     },
+    inviteCode: {
+      type: String,
+      unique: true,
+      index: true,
+    },
+    referredBy: {
+      type: Number,
+      default: null,
+      index: true,
+    },
 
     mobile: {
       type: String,
@@ -73,7 +83,9 @@ HASH PASSWORD (userId is generated in controller)
 ==============================
 */
 userSchema.pre("save", async function () {
-  // Hash password
+  if (!this.inviteCode && this.userId) {
+    this.inviteCode = String(this.userId);
+  }
   if (this.isModified("password")) {
     this.password = await bcrypt.hash(this.password, 10);
   }
