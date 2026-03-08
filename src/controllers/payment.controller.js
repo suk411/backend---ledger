@@ -1,8 +1,5 @@
 import DepositOrder from "../models/depositOrder.model.js";
-import {
-  createPaymentOrder,
-  verifyCallbackSign,
-} from "../services/paysimply.service.js";
+import { createPaymentOrder, verifyCallbackSign } from "../services/paysimply.service.js";
 import accountModel from "../models/account.model.js";
 import { deposit } from "./wallet.controller.js";
 
@@ -109,14 +106,12 @@ async function paymentCallback(req, res) {
     try {
       console.log("⬅️ Callback body:", JSON.stringify(body, null, 2));
     } catch {}
-    console.log(
-      `➡️ Callback: merOrderNo=${body.merOrderNo || body.data?.merOrderNo}`,
-    );
+    const payload = body?.data && typeof body.data === "object" ? body.data : body;
+    console.log(`➡️ Callback: merOrderNo=${payload?.merOrderNo}`);
 
-    if (body.code !== 0) {
-      return res
-        .status(400)
-        .json({ success: false, msg: "Invalid callback", status: "failed" });
+    // Accept both wrapped and flat callbacks; if a code field exists and isn't 0, reject
+    if (typeof body.code !== "undefined" && body.code !== 0) {
+      return res.status(400).json({ success: false, msg: "Invalid callback", status: "failed" });
     }
 
     if (!verifyCallbackSign(body)) {
@@ -125,11 +120,11 @@ async function paymentCallback(req, res) {
         .json({ success: false, msg: "Signature mismatch", status: "failed" });
     }
 
-    const gwData = body.data;
+    const gwData = payload;
     try {
       console.log("⬅️ Callback data:", JSON.stringify(gwData, null, 2));
     } catch {}
-    const merOrderNo = body.merOrderNo || gwData?.merOrderNo;
+    const merOrderNo = gwData?.merOrderNo;
 
     const order = await DepositOrder.findOne({ orderId: merOrderNo });
     if (!order) {
@@ -152,12 +147,7 @@ async function paymentCallback(req, res) {
       await order.save();
 
       if (newStatus === "SUCCESS") {
-        await deposit(
-          order.userId,
-          order.amount,
-          order.orderId,
-          "Deposit via Paysimply",
-        );
+        await deposit(order.userId, order.amount, order.orderId, "Deposit via Paysimply");
         console.log(`✅ Credited ${order.userId}: ₹${order.amount}`);
       }
     }
