@@ -15,6 +15,10 @@ const accountSchema = new mongoose.Schema(
       enum: ["active", "inactive", "suspended"],
       default: "active",
     },
+    statusRemark: {
+      type: String,
+      default: "",
+    },
 
     balance: {
       type: Number,

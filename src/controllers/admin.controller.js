@@ -327,6 +327,47 @@ async function updateAgentConfig(req, res) {
   }
 }
 
+async function updateUserStatusAdmin(req, res) {
+  try {
+    const { userId, status, remark = "" } = req.body || {};
+    const idNum = Number(userId);
+    if (!userId || Number.isNaN(idNum)) {
+      return res.status(400).json({ msg: "Invalid or missing userId" });
+    }
+    if (!status) {
+      return res.status(400).json({ msg: "Missing status" });
+    }
+    const normalized =
+      String(status).toLowerCase() === "active"
+        ? "active"
+        : String(status).toLowerCase() === "suspended"
+          ? "suspended"
+          : ["ban", "banned", "inactive"].includes(String(status).toLowerCase())
+            ? "inactive"
+            : null;
+    if (!normalized) {
+      return res.status(400).json({ msg: "Invalid status" });
+    }
+    const account = await accountModel.findOneAndUpdate(
+      { user: idNum },
+      { $set: { status: normalized, statusRemark: String(remark) } },
+      { returnDocument: "after" },
+    );
+    if (!account) {
+      return res.status(404).json({ msg: "Account not found" });
+    }
+    res.json({
+      msg: "Status updated",
+      userId: idNum,
+      status: account.status,
+      statusRemark: account.statusRemark,
+      updatedAt: account.updatedAt,
+    });
+  } catch (error) {
+    res.status(500).json({ msg: error.message });
+  }
+}
+
 export default {
   createAdminTransaction,
   getAdminDashboard,
@@ -338,4 +379,5 @@ export default {
   approveDepositOrder,
   getAgentConfig,
   updateAgentConfig,
+  updateUserStatusAdmin,
 };

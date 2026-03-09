@@ -20,6 +20,13 @@ router.get(
   adminMiddleware,
   adminController.searchUserOrAccount,
 );
+// Update user status (active | suspended | inactive [aka ban])
+router.patch(
+  "/user",
+  authMiddleware.authMiddleware,
+  adminMiddleware,
+  adminController.updateUserStatusAdmin,
+);
 // Deposit orders - by orderId or by userId (paginated)
 router.get(
   "/deposits",
