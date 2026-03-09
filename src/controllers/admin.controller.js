@@ -386,6 +386,7 @@ export default {
   getAgentConfig,
   updateAgentConfig,
   updateUserStatusAdmin,
+  getAgentDailyByAdmin,
 };
 
 async function getAgentDailyByAdmin(req, res) {
