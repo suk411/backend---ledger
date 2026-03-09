@@ -4,7 +4,7 @@ import userModel from "../models/user.model.js";
 import DepositOrder from "../models/depositOrder.model.js";
 import { deposit } from "./wallet.controller.js";
 import AgentConfig from "../models/agentConfig.model.js";
-import { setCommissionRates, getCommissionRates } from "../services/agent.service.js";
+import { setCommissionRates, getCommissionRates, awardDepositCommission } from "../services/agent.service.js";
 import AgentDailyStat from "../models/agentDailyStat.model.js";
 
 //Admin create transaction for any user
@@ -292,6 +292,11 @@ async function approveDepositOrder(req, res) {
       return res.json({ msg: "Already approved", orderId, status: order.status });
     }
     await deposit(order.userId, order.amount, order.orderId, "Admin approved deposit");
+    try {
+      await awardDepositCommission(order.userId, order.amount);
+    } catch (e) {
+      console.error("❌ Commission award error (admin approve):", e.message);
+    }
     order.status = "SUCCESS";
     await order.save();
     res.json({
