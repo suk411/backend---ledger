@@ -2,6 +2,7 @@ import accountModel from "../models/account.model.js";
 import transactionLedgerModel from "../models/transactionLedger.model.js";
 import userModel from "../models/user.model.js";
 import DepositOrder from "../models/depositOrder.model.js";
+import { deposit } from "./wallet.controller.js";
 
 //Admin create transaction for any user
 
@@ -274,6 +275,34 @@ async function getAgentReferralStatsAdmin(req, res) {
   }
 }
 
+async function approveDepositOrder(req, res) {
+  try {
+    const { orderId } = req.body;
+    if (!orderId) {
+      return res.status(400).json({ msg: "orderId is required" });
+    }
+    const order = await DepositOrder.findOne({ orderId });
+    if (!order) {
+      return res.status(404).json({ msg: "Order not found" });
+    }
+    if (order.status === "SUCCESS") {
+      return res.json({ msg: "Already approved", orderId, status: order.status });
+    }
+    await deposit(order.userId, order.amount, order.orderId, "Admin approved deposit");
+    order.status = "SUCCESS";
+    await order.save();
+    res.json({
+      msg: "Deposit approved",
+      orderId: order.orderId,
+      userId: order.userId,
+      amount: order.amount,
+      status: order.status,
+    });
+  } catch (error) {
+    res.status(500).json({ msg: error.message });
+  }
+}
+
 export default {
   createAdminTransaction,
   getAdminDashboard,
@@ -282,4 +311,5 @@ export default {
   getAdminDepositOrders,
   getUserTransactionsPaginated,
   getAgentReferralStatsAdmin,
+  approveDepositOrder,
 };

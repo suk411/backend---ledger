@@ -41,4 +41,10 @@ router.get(
   adminMiddleware,
   adminController.getAgentReferralStatsAdmin,
 );
+router.post(
+  "/deposits/approve",
+  authMiddleware.authMiddleware,
+  adminMiddleware,
+  adminController.approveDepositOrder,
+);
 export default router;
