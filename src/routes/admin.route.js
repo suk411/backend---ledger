@@ -66,4 +66,10 @@ router.put(
   adminMiddleware,
   adminController.updateAgentConfig,
 );
+router.get(
+  "/agent-daily",
+  authMiddleware.authMiddleware,
+  adminMiddleware,
+  adminController.getAgentDailyByAdmin,
+);
 export default router;

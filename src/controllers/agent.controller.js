@@ -1,6 +1,7 @@
 import CommissionRecord from "../models/commissionRecord.model.js";
 import AgentBonus from "../models/agentBonus.model.js";
 import { claimBonus } from "../services/agent.service.js";
+import AgentDailyStat from "../models/agentDailyStat.model.js";
 
 async function getUserCommissions(req, res) {
   try {
@@ -37,6 +38,36 @@ async function getBonusSummary(req, res) {
   }
 }
 
+async function getDailyStats(req, res) {
+  try {
+    const userId = req.user.userId;
+    const d = req.query.date ? new Date(req.query.date) : new Date();
+    d.setHours(0, 0, 0, 0);
+    const stat = await AgentDailyStat.findOne({ userId, day: d });
+    const payload = {
+      date: d.toISOString(),
+      level1: {
+        deposit: stat?.l1Deposit || 0,
+        commission: stat?.l1Commission || 0,
+        count: stat?.l1Count || 0,
+      },
+      level2: {
+        deposit: stat?.l2Deposit || 0,
+        commission: stat?.l2Commission || 0,
+        count: stat?.l2Count || 0,
+      },
+      level3: {
+        deposit: stat?.l3Deposit || 0,
+        commission: stat?.l3Commission || 0,
+        count: stat?.l3Count || 0,
+      },
+    };
+    res.json(payload);
+  } catch (error) {
+    res.status(500).json({ msg: error.message, status: "failed" });
+  }
+}
+
 async function claimBonusController(req, res) {
   try {
     const userId = req.user.userId;
@@ -54,4 +85,4 @@ async function claimBonusController(req, res) {
   }
 }
 
-export default { getUserCommissions, getBonusSummary, claimBonusController };
+export default { getUserCommissions, getBonusSummary, claimBonusController, getDailyStats };

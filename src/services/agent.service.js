@@ -5,6 +5,7 @@ import AgentBonus from "../models/agentBonus.model.js";
 import mongoose from "mongoose";
 import accountModel from "../models/account.model.js";
 import transactionLedgerModel from "../models/transactionLedger.model.js";
+import AgentDailyStat from "../models/agentDailyStat.model.js";
 
 export async function getCommissionRates() {
   let cfg = await AgentConfig.findOne({ key: "default" });
@@ -32,8 +33,13 @@ export async function awardDepositCommission(depositUserId, depositAmount) {
   const path = Array.isArray(user.path) ? user.path : [];
   const now = new Date();
   const ops = [];
-  for (let i = 0; i < Math.min(3, path.length); i++) {
-    const recUser = path[i];
+  // Path is ordered oldest ancestor ... direct inviter at the end
+  const effective = path.slice(-3); // up to last 3 ancestors
+  const day = new Date(now);
+  day.setHours(0, 0, 0, 0);
+  for (let i = 0; i < Math.min(3, effective.length); i++) {
+    // i=0 => level1 => last element
+    const recUser = effective[effective.length - 1 - i];
     const rate = rates[i] ?? 0;
     if (recUser && rate > 0) {
       const amount = Number((depositAmount * rate).toFixed(2));
@@ -52,6 +58,23 @@ export async function awardDepositCommission(depositUserId, depositAmount) {
           AgentBonus.findOneAndUpdate(
             { userId: recUser },
             { $inc: { unclaimedBonus: amount } },
+            { upsert: true },
+          ),
+        );
+        // Daily snapshot
+        const fields =
+          i === 0
+            ? { l1Deposit: depositAmount, l1Commission: amount, l1Count: 1 }
+            : i === 1
+              ? { l2Deposit: depositAmount, l2Commission: amount, l2Count: 1 }
+              : { l3Deposit: depositAmount, l3Commission: amount, l3Count: 1 };
+        ops.push(
+          AgentDailyStat.findOneAndUpdate(
+            { userId: recUser, day },
+            {
+              $inc: fields,
+              $setOnInsert: { userId: recUser, day },
+            },
             { upsert: true },
           ),
         );

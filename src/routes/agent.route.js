@@ -9,5 +9,6 @@ router.use(authMiddleware.authMiddleware);
 router.get("/commissions", agentController.getUserCommissions);
 router.get("/bonus/summary", agentController.getBonusSummary);
 router.post("/bonus/claim", agentController.claimBonusController);
+router.get("/bonus/daily", agentController.getDailyStats);
 
 export default router;

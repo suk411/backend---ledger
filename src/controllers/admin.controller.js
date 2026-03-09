@@ -5,6 +5,7 @@ import DepositOrder from "../models/depositOrder.model.js";
 import { deposit } from "./wallet.controller.js";
 import AgentConfig from "../models/agentConfig.model.js";
 import { setCommissionRates, getCommissionRates } from "../services/agent.service.js";
+import AgentDailyStat from "../models/agentDailyStat.model.js";
 
 //Admin create transaction for any user
 
@@ -381,3 +382,36 @@ export default {
   updateAgentConfig,
   updateUserStatusAdmin,
 };
+
+async function getAgentDailyByAdmin(req, res) {
+  try {
+    const { userId, date } = req.query;
+    const idNum = Number(userId);
+    if (!userId || Number.isNaN(idNum)) {
+      return res.status(400).json({ msg: "Invalid or missing userId" });
+    }
+    const d = date ? new Date(date) : new Date();
+    d.setHours(0, 0, 0, 0);
+    const stat = await AgentDailyStat.findOne({ userId: idNum, day: d });
+    if (!stat) {
+      return res.json({
+        userId: idNum,
+        date: d.toISOString(),
+        level1: { deposit: 0, commission: 0, count: 0 },
+        level2: { deposit: 0, commission: 0, count: 0 },
+        level3: { deposit: 0, commission: 0, count: 0 },
+      });
+    }
+    res.json({
+      userId: idNum,
+      date: d.toISOString(),
+      level1: { deposit: stat.l1Deposit, commission: stat.l1Commission, count: stat.l1Count },
+      level2: { deposit: stat.l2Deposit, commission: stat.l2Commission, count: stat.l2Count },
+      level3: { deposit: stat.l3Deposit, commission: stat.l3Commission, count: stat.l3Count },
+    });
+  } catch (error) {
+    res.status(500).json({ msg: error.message });
+  }
+}
+
+export { getAgentDailyByAdmin };

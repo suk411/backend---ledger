@@ -34,7 +34,8 @@ async function userRegisterController(req, res) {
         if (inviter) {
           referredBy = inviter.userId;
           const inviterPath = Array.isArray(inviter.path) ? inviter.path : [];
-          newPath = [inviter.userId, ...inviterPath].slice(0, 3);
+          // Build as [...inviter.path, inviter.userId], last = direct inviter
+          newPath = [...inviterPath, inviter.userId].slice(-3);
         }
       }
     }
