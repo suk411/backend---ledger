@@ -3,6 +3,8 @@ import transactionLedgerModel from "../models/transactionLedger.model.js";
 import userModel from "../models/user.model.js";
 import DepositOrder from "../models/depositOrder.model.js";
 import { deposit } from "./wallet.controller.js";
+import AgentConfig from "../models/agentConfig.model.js";
+import { setCommissionRates, getCommissionRates } from "../services/agent.service.js";
 
 //Admin create transaction for any user
 
@@ -303,6 +305,28 @@ async function approveDepositOrder(req, res) {
   }
 }
 
+async function getAgentConfig(req, res) {
+  try {
+    const rates = await getCommissionRates();
+    res.json({ comRates: rates });
+  } catch (error) {
+    res.status(500).json({ msg: error.message });
+  }
+}
+
+async function updateAgentConfig(req, res) {
+  try {
+    const { comRates } = req.body || {};
+    if (!Array.isArray(comRates) || comRates.length !== 3) {
+      return res.status(400).json({ msg: "comRates must be an array of three numbers" });
+    }
+    const updated = await setCommissionRates(comRates.map((n) => Number(n)));
+    res.json({ msg: "Updated", comRates: updated });
+  } catch (error) {
+    res.status(500).json({ msg: error.message });
+  }
+}
+
 export default {
   createAdminTransaction,
   getAdminDashboard,
@@ -312,4 +336,6 @@ export default {
   getUserTransactionsPaginated,
   getAgentReferralStatsAdmin,
   approveDepositOrder,
+  getAgentConfig,
+  updateAgentConfig,
 };

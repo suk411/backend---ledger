@@ -7,6 +7,7 @@ import authRoutes from "./routes/auth.route.js";
 import walletRoutes from "./routes/wallet.route.js";
 import adminRoutes from "./routes/admin.route.js";
 import paymentRoutes from "./routes/payment.route.js";
+import agentRoutes from "./routes/agent.route.js";
 
 dotenv.config();
 const app = express();
@@ -46,6 +47,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/account/", accountRoutes);
 app.use("/api/wallet", walletRoutes);
 app.use("/api/payment", paymentRoutes);
+app.use("/api/agent", agentRoutes);
 
 // 404 handler
 app.use((req, res) => {

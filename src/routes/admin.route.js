@@ -47,4 +47,16 @@ router.post(
   adminMiddleware,
   adminController.approveDepositOrder,
 );
+router.get(
+  "/agent-config",
+  authMiddleware.authMiddleware,
+  adminMiddleware,
+  adminController.getAgentConfig,
+);
+router.put(
+  "/agent-config",
+  authMiddleware.authMiddleware,
+  adminMiddleware,
+  adminController.updateAgentConfig,
+);
 export default router;

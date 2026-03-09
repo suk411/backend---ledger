@@ -2,6 +2,7 @@ import DepositOrder from "../models/depositOrder.model.js";
 import { createPaymentOrder, verifyCallbackSign } from "../services/paysimply.service.js";
 import accountModel from "../models/account.model.js";
 import { deposit } from "./wallet.controller.js";
+import { awardDepositCommission } from "../services/agent.service.js";
 
 function mapGatewayStatus(status) {
   if ([0, 1, -4].includes(status)) return "PENDING";
@@ -148,6 +149,11 @@ async function paymentCallback(req, res) {
 
       if (newStatus === "SUCCESS") {
         await deposit(order.userId, order.amount, order.orderId, "Deposit via Paysimply");
+        try {
+          await awardDepositCommission(order.userId, order.amount);
+        } catch (e) {
+          console.error("❌ Commission award error:", e.message);
+        }
         console.log(`✅ Credited ${order.userId}: ₹${order.amount}`);
       }
     }

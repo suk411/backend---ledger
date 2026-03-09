@@ -43,6 +43,10 @@ const userSchema = new mongoose.Schema(
       type: Number,
       unique: true,
     },
+    path: {
+      type: [Number],
+      default: [],
+    },
     inviteCode: {
       type: String,
       unique: true,

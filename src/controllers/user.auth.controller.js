@@ -26,11 +26,16 @@ async function userRegisterController(req, res) {
     const userId = await generateUserId(session);
 
     let referredBy = null;
+    let newPath = [];
     if (referralCode) {
       const inviterId = Number(referralCode);
       if (!Number.isNaN(inviterId)) {
         const inviter = await userModel.findOne({ userId: inviterId }).session(session);
-        if (inviter) referredBy = inviter.userId;
+        if (inviter) {
+          referredBy = inviter.userId;
+          const inviterPath = Array.isArray(inviter.path) ? inviter.path : [];
+          newPath = [inviter.userId, ...inviterPath].slice(0, 3);
+        }
       }
     }
 
@@ -43,6 +48,7 @@ async function userRegisterController(req, res) {
           password,
           inviteCode: String(userId),
           referredBy,
+          path: newPath,
         },
       ],
       { session },
