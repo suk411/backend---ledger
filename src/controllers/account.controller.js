@@ -125,7 +125,10 @@ async function claimVipMonthlyBonus(req, res) {
         { $inc: { balance: totalBonus }, ...(Object.keys(setFields).length ? { $set: setFields } : {}) },
         { session },
       ),
-      transactionLedgerModel.create(entries, { session }),
+      // Using insertMany with { ordered: true } to support multiple docs with a session
+      (entries.length > 1
+        ? transactionLedgerModel.insertMany(entries, { session, ordered: true })
+        : transactionLedgerModel.create(entries[0], { session })),
     ]);
     await session.commitTransaction();
     res.json({
