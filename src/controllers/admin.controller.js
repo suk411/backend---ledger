@@ -144,6 +144,7 @@ async function searchUserOrAccount(req, res) {
               vpnDetected: latestDeviceLog.vpnDetected,
               deviceId: latestDeviceLog.deviceId,
               fingerprint: latestDeviceLog.fingerprint,
+              adId: latestDeviceLog.adId || "",
               platform: latestDeviceLog.platform,
               browser: latestDeviceLog.browser,
               os: latestDeviceLog.os,

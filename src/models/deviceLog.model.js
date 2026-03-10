@@ -12,6 +12,7 @@ const deviceLogSchema = new mongoose.Schema(
     vpnDetected: { type: Boolean, default: false },
     deviceId: { type: String, default: "", index: true },
     fingerprint: { type: String, default: "", index: true },
+    adId: { type: String, default: "", index: true },
     platform: { type: String, default: "" },
     browser: { type: String, default: "" },
     os: { type: String, default: "" },

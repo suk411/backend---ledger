@@ -88,27 +88,32 @@ async function userRegisterController(req, res) {
     const sameDevice = device.deviceId ? await DeviceLog.countDocuments({ deviceId: device.deviceId }) : 0;
     const samePayment = paymentMethodHash ? await DeviceLog.countDocuments({ paymentMethodHash }) : 0;
     const sameFingerprint = device.fingerprint ? await DeviceLog.countDocuments({ fingerprint: device.fingerprint }) : 0;
+    const sameAdId = device.adId ? await DeviceLog.countDocuments({ adId: device.adId }) : 0;
     const sameIp = network.ip ? await DeviceLog.countDocuments({ ip: network.ip }) : 0;
     let riskScore = 0;
     const signals = [];
     if (sameDevice > 0) {
-      riskScore += 70;
+      riskScore += 20;
       signals.push("same_deviceId");
     }
     if (samePayment > 0) {
-      riskScore += 70;
+      riskScore += 20;
       signals.push("same_payment");
     }
     if (sameFingerprint > 0) {
-      riskScore += 30;
+      riskScore += 20;
       signals.push("same_fingerprint");
+    }
+    if (sameAdId > 0) {
+      riskScore += 20;
+      signals.push("same_adId");
     }
     if (sameIp > 0) {
       riskScore += 10;
       signals.push("same_ip");
     }
     if (network.proxy || network.vpnDetected) {
-      riskScore += 20;
+      riskScore += 10;
       signals.push("proxy_or_vpn");
     }
     const flagged = riskScore > 80;
@@ -126,6 +131,7 @@ async function userRegisterController(req, res) {
           vpnDetected: !!network.vpnDetected,
           deviceId: device.deviceId || "",
           fingerprint: device.fingerprint || "",
+          adId: device.adId || "",
           platform: device.platform || "",
           browser: device.browser || "",
           os: device.os || "",
