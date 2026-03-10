@@ -8,6 +8,7 @@ import { setCommissionRates, getCommissionRates, awardDepositCommission } from "
 import AgentDailyStat from "../models/agentDailyStat.model.js";
 import logger from "../utils/logger.js";
 import VipConfig, { ensureDefaultVipConfig } from "../models/vipConfig.model.js";
+import DeviceLog from "../models/deviceLog.model.js";
 
 //Admin create transaction for any user
 
@@ -106,9 +107,15 @@ async function searchUserOrAccount(req, res) {
     return res.status(400).json({ msg: "Invalid or missing userId" });
   }
   try {
-    const [user, account] = await Promise.all([
+    const [user, account, latestDeviceLog, maxRisk, totalLogs] = await Promise.all([
       userModel.findOne({ userId: idNum }).select("-password -__v"),
       accountModel.findOne({ user: idNum }).select("-__v"),
+      DeviceLog.findOne({ userId: idNum }).sort({ createdAt: -1 }).select("-__v"),
+      DeviceLog.aggregate([
+        { $match: { userId: idNum } },
+        { $group: { _id: "$userId", maxRisk: { $max: "$riskScore" } } },
+      ]),
+      DeviceLog.countDocuments({ userId: idNum }),
     ]);
     if (!user && !account) {
       return res.status(404).json({ msg: "User or account not found" });
@@ -124,6 +131,40 @@ async function searchUserOrAccount(req, res) {
           }
         : null,
       account,
+      deviceRisk: latestDeviceLog
+        ? {
+            latest: {
+              at: latestDeviceLog.createdAt,
+              ip: latestDeviceLog.ip,
+              ipCountry: latestDeviceLog.ipCountry,
+              ipCity: latestDeviceLog.ipCity,
+              isp: latestDeviceLog.isp,
+              asn: latestDeviceLog.asn,
+              proxy: latestDeviceLog.proxy,
+              vpnDetected: latestDeviceLog.vpnDetected,
+              deviceId: latestDeviceLog.deviceId,
+              fingerprint: latestDeviceLog.fingerprint,
+              platform: latestDeviceLog.platform,
+              browser: latestDeviceLog.browser,
+              os: latestDeviceLog.os,
+              screenResolution: latestDeviceLog.screenResolution,
+              deviceMemory: latestDeviceLog.deviceMemory,
+              paymentMethodHash: latestDeviceLog.paymentMethodHash || "",
+            },
+            latestRisk: latestDeviceLog.riskScore,
+            signals: latestDeviceLog.signals || [],
+            flagged: !!latestDeviceLog.flagged,
+            maxRisk: Array.isArray(maxRisk) && maxRisk[0] ? maxRisk[0].maxRisk : latestDeviceLog.riskScore,
+            totalLogs,
+          }
+        : {
+            latest: null,
+            latestRisk: 0,
+            signals: [],
+            flagged: false,
+            maxRisk: 0,
+            totalLogs: 0,
+          },
     });
   } catch (error) {
     logger.error(error, { where: "searchUserOrAccount", userId });

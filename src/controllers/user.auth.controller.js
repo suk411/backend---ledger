@@ -2,6 +2,7 @@ import userModel, { generateUserId } from "../models/user.model.js";
 import accountModel from "../models/account.model.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+import DeviceLog from "../models/deviceLog.model.js";
 
 // ================= REGISTER =================
 
@@ -80,8 +81,66 @@ async function userRegisterController(req, res) {
 
     console.log("ACCOUNT CREATED:", account[0].user);
 
-    // Commit transaction
-    await session.commitTransaction();
+    const device = req.body.device || {};
+    const network = req.body.network || {};
+    const paymentMethodHash = req.body.paymentMethodHash || "";
+
+    const sameDevice = device.deviceId ? await DeviceLog.countDocuments({ deviceId: device.deviceId }) : 0;
+    const samePayment = paymentMethodHash ? await DeviceLog.countDocuments({ paymentMethodHash }) : 0;
+    const sameFingerprint = device.fingerprint ? await DeviceLog.countDocuments({ fingerprint: device.fingerprint }) : 0;
+    const sameIp = network.ip ? await DeviceLog.countDocuments({ ip: network.ip }) : 0;
+    let riskScore = 0;
+    const signals = [];
+    if (sameDevice > 0) {
+      riskScore += 70;
+      signals.push("same_deviceId");
+    }
+    if (samePayment > 0) {
+      riskScore += 70;
+      signals.push("same_payment");
+    }
+    if (sameFingerprint > 0) {
+      riskScore += 30;
+      signals.push("same_fingerprint");
+    }
+    if (sameIp > 0) {
+      riskScore += 10;
+      signals.push("same_ip");
+    }
+    if (network.proxy || network.vpnDetected) {
+      riskScore += 20;
+      signals.push("proxy_or_vpn");
+    }
+    const flagged = riskScore > 80;
+
+    await DeviceLog.create(
+      [
+        {
+          userId,
+          ip: network.ip || "",
+          ipCountry: network.ipCountry || "",
+          ipCity: network.ipCity || "",
+          isp: network.isp || "",
+          asn: network.asn || "",
+          proxy: !!network.proxy,
+          vpnDetected: !!network.vpnDetected,
+          deviceId: device.deviceId || "",
+          fingerprint: device.fingerprint || "",
+          platform: device.platform || "",
+          browser: device.browser || "",
+          os: device.os || "",
+          screenResolution: device.screenResolution || "",
+          deviceMemory: Number(device.deviceMemory || 0),
+          paymentMethodHash: paymentMethodHash || "",
+          riskScore,
+          signals,
+          flagged,
+        },
+      ],
+      { session },
+    );
+
+    await session.commitTransaction()
 
     const token = jwt.sign({ userId }, process.env.JWT_SECRET, {
       expiresIn: "1d",
