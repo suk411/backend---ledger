@@ -51,6 +51,8 @@ async function getVipStatus(req, res) {
       withdrawDailyLimit: account.withdrawDailyLimit,
       monthlyCheckinBonus: level ? level.monthlyCheckinBonus : 0,
       canClaimMonthly,
+      pendingUpgradeBonus: account.pendingUpgradeBonus || 0,
+      canClaimUpgrade: (account.pendingUpgradeBonus || 0) > 0,
     });
   } catch (error) {
     res.status(500).json({ status: "failed", msg: error.message });
@@ -76,35 +78,65 @@ async function claimVipMonthlyBonus(req, res) {
     const now = new Date();
     const monthKey = `${now.getFullYear()}-${now.getMonth()}`;
     const last = account.lastVipBonusAt ? `${account.lastVipBonusAt.getFullYear()}-${account.lastVipBonusAt.getMonth()}` : null;
-    if (monthKey === last) {
+    const monthlyEligible = monthKey !== last;
+    const monthlyBonus = monthlyEligible ? (level.monthlyCheckinBonus || 0) : 0;
+    const upgradeBonus = account.pendingUpgradeBonus || 0;
+    const totalBonus = (monthlyBonus || 0) + (upgradeBonus || 0);
+    if (totalBonus <= 0) {
       await session.abortTransaction();
-      return res.status(400).json({ status: "failed", msg: "Monthly check-in bonus already claimed" });
+      return res.status(400).json({ status: "failed", msg: "No bonus available to claim" });
     }
-    const bonus = level.monthlyCheckinBonus || 0;
-    const after = account.balance + bonus;
+
+    // Build ledger entries in sequence
+    const entries = [];
+    let runningAfter = account.balance;
+    if (monthlyBonus > 0) {
+      runningAfter += monthlyBonus;
+      entries.push({
+        userId,
+        type: "BONUS",
+        amount: monthlyBonus,
+        balanceAfter: runningAfter,
+        status: "SUCCESS",
+        orderId: `VIPMONTH-${now.getFullYear()}${now.getMonth() + 1}-${userId}`,
+        remark: `Monthly VIP check-in bonus for ${account.vipLevel}`,
+      });
+    }
+    if (upgradeBonus > 0) {
+      runningAfter += upgradeBonus;
+      entries.push({
+        userId,
+        type: "BONUS",
+        amount: upgradeBonus,
+        balanceAfter: runningAfter,
+        status: "SUCCESS",
+        orderId: `VIPUP-PACK-${Date.now()}-${userId}`,
+        remark: `Accumulated VIP upgrade bonus`,
+      });
+    }
+
+    const setFields = {};
+    if (monthlyEligible) setFields.lastVipBonusAt = now;
+    if (upgradeBonus > 0) setFields.pendingUpgradeBonus = 0;
+
     await Promise.all([
       accountModel.updateOne(
         { user: userId },
-        { $inc: { balance: bonus }, $set: { lastVipBonusAt: now } },
+        { $inc: { balance: totalBonus }, ...(Object.keys(setFields).length ? { $set: setFields } : {}) },
         { session },
       ),
-      transactionLedgerModel.create(
-        [
-          {
-            userId,
-            type: "BONUS",
-            amount: bonus,
-            balanceAfter: after,
-            status: "SUCCESS",
-            orderId: `VIPMONTH-${now.getFullYear()}${now.getMonth() + 1}-${userId}`,
-            remark: `Monthly VIP check-in bonus for ${account.vipLevel}`,
-          },
-        ],
-        { session },
-      ),
+      transactionLedgerModel.create(entries, { session }),
     ]);
     await session.commitTransaction();
-    res.json({ status: "success", userId, amount: bonus, balanceAfter: after, vipLevel: account.vipLevel });
+    res.json({
+      status: "success",
+      userId,
+      monthlyBonus,
+      upgradeBonus,
+      totalCredited: totalBonus,
+      balanceAfter: runningAfter,
+      vipLevel: account.vipLevel,
+    });
   } catch (error) {
     await session.abortTransaction();
     res.status(500).json({ status: "failed", msg: error.message });

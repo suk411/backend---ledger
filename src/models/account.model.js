@@ -34,6 +34,11 @@ const accountSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    pendingUpgradeBonus: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
 
     status: {
       type: String,
