@@ -92,4 +92,11 @@ router.put(
   adminMiddleware,
   adminController.updateVipConfig,
 );
+// Update user bind bank
+router.put(
+  "/user/bind-bank",
+  authMiddleware.authMiddleware,
+  adminMiddleware,
+  adminController.adminUpdateBindBank,
+);
 export default router;

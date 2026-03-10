@@ -467,6 +467,32 @@ async function updateVipConfig(req, res) {
   }
 }
 
+async function adminUpdateBindBank(req, res) {
+  try {
+    const { userId, bankName, bankCode, accountNumber, accountHolder } = req.body || {};
+    const idNum = Number(userId);
+    if (!userId || Number.isNaN(idNum)) {
+      return res.status(400).json({ msg: "Invalid or missing userId" });
+    }
+    const account = await accountModel.findOne({ user: idNum });
+    if (!account) {
+      return res.status(404).json({ msg: "Account not found" });
+    }
+    account.bindAccount = {
+      bankName: String(bankName || account.bindAccount?.bankName || ""),
+      bankCode: String(bankCode || account.bindAccount?.bankCode || ""),
+      accountNumber: String(accountNumber || account.bindAccount?.accountNumber || ""),
+      accountHolder: String(accountHolder || account.bindAccount?.accountHolder || ""),
+      boundAt: account.bindAccount?.boundAt || new Date(),
+    };
+    await account.save();
+    res.json({ msg: "Updated", userId: idNum, bindAccount: account.bindAccount });
+  } catch (error) {
+    logger.error(error, { where: "adminUpdateBindBank", body: req.body });
+    res.status(500).json({ msg: error.message });
+  }
+}
+
 export default {
   createAdminTransaction,
   getAdminDashboard,
@@ -483,6 +509,7 @@ export default {
   getServerLogs,
   getVipConfig,
   updateVipConfig,
+  adminUpdateBindBank,
 };
 
 async function getAgentDailyByAdmin(req, res) {

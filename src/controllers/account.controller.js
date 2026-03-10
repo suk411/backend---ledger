@@ -30,6 +30,82 @@ async function getUserBalanceController(req, res) {
   }
 }
 
+async function bindBankAccount(req, res) {
+  try {
+    const userId = req.user.userId;
+    const { bankName, bankCode, accountNumber, accountHolder } = req.body || {};
+    if (!bankName || !bankCode || !accountNumber || !accountHolder) {
+      return res.status(400).json({ status: "failed", msg: "Missing required fields" });
+    }
+    const account = await accountModel.findOne({ user: userId });
+    if (!account) {
+      return res.status(404).json({ status: "failed", msg: "Account not found" });
+    }
+    if (account.bindAccount && account.bindAccount.accountNumber) {
+      return res.status(400).json({ status: "failed", msg: "Bank account already bound" });
+    }
+    account.bindAccount = {
+      bankName: String(bankName),
+      bankCode: String(bankCode),
+      accountNumber: String(accountNumber),
+      accountHolder: String(accountHolder),
+      boundAt: new Date(),
+    };
+    await account.save();
+    res.json({
+      status: "success",
+      bindAccount: account.bindAccount,
+    });
+  } catch (error) {
+    res.status(500).json({ status: "failed", msg: error.message });
+  }
+}
+
+async function getWithdrawInfo(req, res) {
+  try {
+    const userId = req.user.userId;
+    const account = await accountModel.findOne({ user: userId });
+    if (!account) {
+      return res.status(404).json({ status: "failed", msg: "Account not found" });
+    }
+    const now = new Date();
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    const sumToday = await transactionLedgerModel.aggregate([
+      { $match: { userId, type: "WITHDRAW", createdAt: { $gte: start, $lt: end } } },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]);
+    const withdrawnToday = sumToday[0]?.total || 0;
+    let limit = account.withdrawDailyLimit;
+    let canWithdrawAmount = 0;
+    if (limit === -1) {
+      canWithdrawAmount = -1;
+    } else if (limit > 0) {
+      canWithdrawAmount = Math.max(0, limit - withdrawnToday);
+    } else {
+      canWithdrawAmount = 0;
+    }
+    const charge = Number(process.env.WITHDRAW_CHARGE_RATE || 0.4);
+    const cfg = await ensureDefaultVipConfig();
+    const level = (cfg.levels || []).find((l) => l.name === account.vipLevel) || null;
+    res.json({
+      success: true,
+      data: {
+        bindAccount: account.bindAccount || null,
+        balance: account.balance,
+        canWithdrawAmount,
+        charge,
+        vip: account.vipLevel,
+        vipMeta: level || null,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ status: "failed", msg: error.message });
+  }
+}
+
 async function getVipStatus(req, res) {
   try {
     const userId = req.user.userId;
@@ -229,4 +305,11 @@ async function adminFindDepositOrders(req, res) {
 }
 
 export default getUserBalanceController;
-export { getOwnDepositOrders, adminFindDepositOrders, getVipStatus, claimVipMonthlyBonus };
+export {
+  getOwnDepositOrders,
+  adminFindDepositOrders,
+  getVipStatus,
+  claimVipMonthlyBonus,
+  bindBankAccount,
+  getWithdrawInfo,
+};

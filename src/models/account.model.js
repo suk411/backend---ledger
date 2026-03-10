@@ -39,6 +39,13 @@ const accountSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    bindAccount: {
+      bankName: { type: String, default: "" },
+      bankCode: { type: String, default: "" },
+      accountNumber: { type: String, default: "" },
+      accountHolder: { type: String, default: "" },
+      boundAt: { type: Date, default: null },
+    },
 
     status: {
       type: String,
