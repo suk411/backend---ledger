@@ -89,26 +89,26 @@ async function claimVipMonthlyBonus(req, res) {
 
     // Build ledger entries in sequence
     const entries = [];
-    let runningAfter = account.balance;
+    let runningAfter = Number(account.balance || 0);
     if (monthlyBonus > 0) {
-      runningAfter += monthlyBonus;
+      runningAfter += Number(monthlyBonus);
       entries.push({
         userId,
         type: "BONUS",
-        amount: monthlyBonus,
-        balanceAfter: runningAfter,
+        amount: Number(monthlyBonus),
+        balanceAfter: Number(runningAfter),
         status: "SUCCESS",
         orderId: `VIPMONTH-${now.getFullYear()}${now.getMonth() + 1}-${userId}`,
         remark: `Monthly VIP check-in bonus for ${account.vipLevel}`,
       });
     }
     if (upgradeBonus > 0) {
-      runningAfter += upgradeBonus;
+      runningAfter += Number(upgradeBonus);
       entries.push({
         userId,
         type: "BONUS",
-        amount: upgradeBonus,
-        balanceAfter: runningAfter,
+        amount: Number(upgradeBonus),
+        balanceAfter: Number(runningAfter),
         status: "SUCCESS",
         orderId: `VIPUP-PACK-${Date.now()}-${userId}`,
         remark: `Accumulated VIP upgrade bonus`,
@@ -125,10 +125,8 @@ async function claimVipMonthlyBonus(req, res) {
         { $inc: { balance: totalBonus }, ...(Object.keys(setFields).length ? { $set: setFields } : {}) },
         { session },
       ),
-      // Using insertMany with { ordered: true } to support multiple docs with a session
-      (entries.length > 1
-        ? transactionLedgerModel.insertMany(entries, { session, ordered: true })
-        : transactionLedgerModel.create(entries[0], { session })),
+      // Always use insertMany to avoid session multi-doc edge cases
+      transactionLedgerModel.insertMany(entries, { session, ordered: true }),
     ]);
     await session.commitTransaction();
     res.json({
