@@ -6,6 +6,7 @@ import { deposit } from "./wallet.controller.js";
 import AgentConfig from "../models/agentConfig.model.js";
 import { setCommissionRates, getCommissionRates, awardDepositCommission } from "../services/agent.service.js";
 import AgentDailyStat from "../models/agentDailyStat.model.js";
+import logger from "../utils/logger.js";
 
 //Admin create transaction for any user
 
@@ -46,7 +47,8 @@ async function createAdminTransaction(req, res) {
       orderId: ledger.orderId,
     });
   } catch (error) {
-    res.status(500).json({ msg: error.msg });
+    logger.error(error, { where: "createAdminTransaction", targetUserId, type, amount });
+    res.status(500).json({ msg: error.message });
   }
 }
 
@@ -66,6 +68,7 @@ async function getAdminDashboard(req, res) {
       totalDeposits: deposits[0]?.total || 0,
     });
   } catch (error) {
+    logger.error(error, { where: "getAdminDashboard" });
     res.status(500).json({
       msg: "Error fetching admin dashboard data",
       status: "failed",
@@ -90,7 +93,8 @@ async function getUserLedgerByAdmin(req, res) {
     }
     res.json({ targetUserId, transactions: ledger });
   } catch (error) {
-    res.status(500).json({ msg: error.msg });
+    logger.error(error, { where: "getUserLedgerByAdmin", targetUserId, limit });
+    res.status(500).json({ msg: error.message });
   }
 }
 
@@ -121,6 +125,7 @@ async function searchUserOrAccount(req, res) {
       account,
     });
   } catch (error) {
+    logger.error(error, { where: "searchUserOrAccount", userId });
     res.status(500).json({ msg: error.message });
   }
 }
@@ -162,6 +167,7 @@ async function getAdminDepositOrders(req, res) {
     }
     res.json({ status: "success", userId: idNum, total, page: pg, limit: lm, items });
   } catch (error) {
+    logger.error(error, { where: "getAdminDepositOrders", orderId, userId, page, limit });
     res.status(500).json({ status: "failed", msg: error.message });
   }
 }
@@ -190,6 +196,7 @@ async function getUserTransactionsPaginated(req, res) {
     }
     res.json({ userId: idNum, total, page: pg, limit: lm, items });
   } catch (error) {
+    logger.error(error, { where: "getUserTransactionsPaginated", userId, page, limit });
     res.status(500).json({ msg: error.message });
   }
 }
@@ -274,6 +281,7 @@ async function getAgentReferralStatsAdmin(req, res) {
       invitees: items,
     });
   } catch (error) {
+    logger.error(error, { where: "getAgentReferralStatsAdmin", userId, page, limit });
     res.status(500).json({ msg: error.message });
   }
 }
@@ -307,6 +315,7 @@ async function approveDepositOrder(req, res) {
       status: order.status,
     });
   } catch (error) {
+    logger.error(error, { where: "approveDepositOrder", orderId: req.body && req.body.orderId });
     res.status(500).json({ msg: error.message });
   }
 }
@@ -316,6 +325,7 @@ async function getAgentConfig(req, res) {
     const rates = await getCommissionRates();
     res.json({ comRates: rates });
   } catch (error) {
+    logger.error(error, { where: "getAgentConfig" });
     res.status(500).json({ msg: error.message });
   }
 }
@@ -329,6 +339,7 @@ async function updateAgentConfig(req, res) {
     const updated = await setCommissionRates(comRates.map((n) => Number(n)));
     res.json({ msg: "Updated", comRates: updated });
   } catch (error) {
+    logger.error(error, { where: "updateAgentConfig", body: req.body });
     res.status(500).json({ msg: error.message });
   }
 }
@@ -370,6 +381,7 @@ async function updateUserStatusAdmin(req, res) {
       updatedAt: account.updatedAt,
     });
   } catch (error) {
+    logger.error(error, { where: "updateUserStatusAdmin", body: req.body });
     res.status(500).json({ msg: error.message });
   }
 }
@@ -387,6 +399,7 @@ export default {
   updateAgentConfig,
   updateUserStatusAdmin,
   getAgentDailyByAdmin,
+  getServerLogs,
 };
 
 async function getAgentDailyByAdmin(req, res) {
@@ -421,3 +434,14 @@ async function getAgentDailyByAdmin(req, res) {
 }
 
 export { getAgentDailyByAdmin };
+
+async function getServerLogs(req, res) {
+  try {
+    const { level, since, limit } = req.query;
+    const entries = logger.getLogs({ level, since, limit: Number(limit) || 200 });
+    res.json({ status: "success", count: entries.length, entries });
+  } catch (error) {
+    logger.error(error, { where: "getServerLogs", query: req.query });
+    res.status(500).json({ msg: error.message });
+  }
+}

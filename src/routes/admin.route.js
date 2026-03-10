@@ -72,4 +72,11 @@ router.get(
   adminMiddleware,
   adminController.getAgentDailyByAdmin,
 );
+// Server logs
+router.get(
+  "/logs",
+  authMiddleware.authMiddleware,
+  adminMiddleware,
+  adminController.getServerLogs,
+);
 export default router;

@@ -8,6 +8,7 @@ import walletRoutes from "./routes/wallet.route.js";
 import adminRoutes from "./routes/admin.route.js";
 import paymentRoutes from "./routes/payment.route.js";
 import agentRoutes from "./routes/agent.route.js";
+import logger from "./utils/logger.js";
 
 dotenv.config();
 const app = express();
@@ -37,11 +38,8 @@ app.use(
   }),
 );
 
-// ✅ Global request logger
-app.use((req, res, next) => {
-  console.log(`🌐 ${req.method} ${req.path}`);
-  next();
-});
+// ✅ Request/response logger (one-liners for every request)
+app.use(logger.requestLogger());
 // Use routes
 app.use("/api/admin", adminRoutes);
 app.use("/api/auth", authRoutes);
@@ -57,5 +55,8 @@ app.use((req, res) => {
     status: "failed",
   });
 });
+
+// Centralized error handler to capture full stacks
+app.use(logger.errorHandler());
 
 export default app;
