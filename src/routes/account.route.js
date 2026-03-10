@@ -1,5 +1,5 @@
 import express from "express";
-import getUserBalanceController, { getOwnDepositOrders } from "../controllers/account.controller.js";
+import getUserBalanceController, { getOwnDepositOrders, getVipStatus, claimVipMonthlyBonus } from "../controllers/account.controller.js";
 import authMiddleware from "../middleware/user.auth.middleware.js";
 
 const router = express.Router();
@@ -11,5 +11,9 @@ router.get(
   authMiddleware.authMiddleware,
   getOwnDepositOrders,
 );
+// GET /api/account/vip
+router.get("/vip", authMiddleware.authMiddleware, getVipStatus);
+// POST /api/account/vip/checkin
+router.post("/vip/checkin", authMiddleware.authMiddleware, claimVipMonthlyBonus);
 
 export default router;

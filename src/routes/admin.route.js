@@ -79,4 +79,17 @@ router.get(
   adminMiddleware,
   adminController.getServerLogs,
 );
+// VIP config
+router.get(
+  "/vip-config",
+  authMiddleware.authMiddleware,
+  adminMiddleware,
+  adminController.getVipConfig,
+);
+router.put(
+  "/vip-config",
+  authMiddleware.authMiddleware,
+  adminMiddleware,
+  adminController.updateVipConfig,
+);
 export default router;

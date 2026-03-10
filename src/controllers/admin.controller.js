@@ -7,6 +7,7 @@ import AgentConfig from "../models/agentConfig.model.js";
 import { setCommissionRates, getCommissionRates, awardDepositCommission } from "../services/agent.service.js";
 import AgentDailyStat from "../models/agentDailyStat.model.js";
 import logger from "../utils/logger.js";
+import VipConfig, { ensureDefaultVipConfig } from "../models/vipConfig.model.js";
 
 //Admin create transaction for any user
 
@@ -386,6 +387,44 @@ async function updateUserStatusAdmin(req, res) {
   }
 }
 
+async function getVipConfig(req, res) {
+  try {
+    const cfg = await ensureDefaultVipConfig();
+    res.json({ levels: cfg.levels });
+  } catch (error) {
+    logger.error(error, { where: "getVipConfig" });
+    res.status(500).json({ msg: error.message });
+  }
+}
+
+async function updateVipConfig(req, res) {
+  try {
+    const { levels } = req.body || {};
+    if (!Array.isArray(levels) || levels.length === 0) {
+      return res.status(400).json({ msg: "levels must be a non-empty array" });
+    }
+    for (const lvl of levels) {
+      if (
+        typeof lvl.name !== "string" ||
+        typeof lvl.minDeposit !== "number" ||
+        typeof lvl.dailyWithdrawLimit !== "number" ||
+        typeof lvl.monthlyCheckinBonus !== "number"
+      ) {
+        return res.status(400).json({ msg: "invalid level shape" });
+      }
+    }
+    const doc = await VipConfig.findOneAndUpdate(
+      {},
+      { $set: { levels } },
+      { upsert: true, returnDocument: "after" },
+    );
+    res.json({ msg: "Updated", levels: doc.levels });
+  } catch (error) {
+    logger.error(error, { where: "updateVipConfig", body: req.body });
+    res.status(500).json({ msg: error.message });
+  }
+}
+
 export default {
   createAdminTransaction,
   getAdminDashboard,
@@ -400,6 +439,8 @@ export default {
   updateUserStatusAdmin,
   getAgentDailyByAdmin,
   getServerLogs,
+  getVipConfig,
+  updateVipConfig,
 };
 
 async function getAgentDailyByAdmin(req, res) {

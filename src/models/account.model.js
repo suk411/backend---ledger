@@ -10,6 +10,31 @@ const accountSchema = new mongoose.Schema(
       index: true,
     },
 
+    // VIP fields
+    vipLevel: {
+      type: String,
+      default: "NONE",
+      index: true,
+    },
+    vipSince: {
+      type: Date,
+      default: null,
+    },
+    totalDeposits: {
+      type: Number,
+      default: 0,
+      min: [0, "Total deposits cannot be negative"],
+      index: true,
+    },
+    withdrawDailyLimit: {
+      type: Number,
+      default: 0, // -1 => unlimited, 0 => no limit unlocked
+    },
+    lastVipBonusAt: {
+      type: Date,
+      default: null,
+    },
+
     status: {
       type: String,
       enum: ["active", "inactive", "suspended"],
