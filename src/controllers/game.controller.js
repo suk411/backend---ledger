@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import axios from "axios";
 
 const {
   GAME_API_URL,
@@ -32,6 +33,48 @@ async function getLaunchUrl(req, res) {
     // Static password that follows provider recommendation; you can change this later.
     const password = "Qwer124";
 
+    // 1) Ensure member exists in game provider (createMember API)
+    const createMemberSignature = crypto
+      .createHash("md5")
+      .update(
+        OPERATOR_CODE.toLowerCase() + username.toLowerCase() + SECRET_KEY,
+      )
+      .digest("hex")
+      .toUpperCase();
+
+    try {
+      const cmRes = await axios.get(
+        `${GAME_API_URL}/createMember.aspx`,
+        {
+          params: {
+            operatorcode: OPERATOR_CODE.toLowerCase(),
+            username,
+            signature: createMemberSignature,
+          },
+          timeout: 10000,
+        },
+      );
+
+      const { errCode, errMsg } = cmRes.data || {};
+      // 0 = created, 82 = already exists; both are OK for launching.
+      if (errCode !== "0" && errCode !== "82") {
+        return res.status(400).json({
+          status: "failed",
+          step: "createMember",
+          providerErrCode: errCode,
+          providerErrMsg: errMsg || "Failed to create member at provider",
+        });
+      }
+    } catch (e) {
+      return res.status(502).json({
+        status: "failed",
+        step: "createMember",
+        msg: "Error calling createMember on provider",
+        error: e.response?.data || e.message,
+      });
+    }
+
+    // 2) Build launchGames signature and URL
     const rawSignature =
       OPERATOR_CODE.toLowerCase() +
       password +
