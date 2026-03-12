@@ -8,6 +8,7 @@ import walletRoutes from "./routes/wallet.route.js";
 import adminRoutes from "./routes/admin.route.js";
 import paymentRoutes from "./routes/payment.route.js";
 import agentRoutes from "./routes/agent.route.js";
+import gameRoutes from "./routes/game.route.js";
 import logger from "./utils/logger.js";
 
 dotenv.config();
@@ -47,6 +48,7 @@ app.use("/api/account/", accountRoutes);
 app.use("/api/wallet", walletRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/agent", agentRoutes);
+app.use("/api/game", gameRoutes);
 
 // 404 handler
 app.use((req, res) => {
