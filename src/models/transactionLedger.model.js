@@ -10,7 +10,17 @@ const transactionLedgerSchema = new mongoose.Schema(
     type: {
       type: String,
       required: true,
-      enum: ["DEPOSIT", "WITHDRAW", "BET", "WIN", "REFUND", "BONUS", "ADMIN"],
+      enum: [
+        "DEPOSIT",
+        "WITHDRAW",
+        "BET",
+        "WIN",
+        "REFUND",
+        "BONUS",
+        "ADMIN",
+        "gameIn",
+        "gameOut",
+      ],
     },
     amount: {
       type: Number,
