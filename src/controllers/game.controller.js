@@ -27,6 +27,13 @@ function buildPassword() {
   return "Qwer124";
 }
 
+function buildReferenceId(prefix, userId) {
+  // Provider requires max length 20, use only A–Z0–9
+  const base = `${prefix}${userId}${Date.now()}`;
+  const clean = base.replace(/[^A-Za-z0-9]/g, "");
+  return clean.slice(0, 20);
+}
+
 async function ensureProviderMember(username) {
   const sig = crypto
     .createHash("md5")
@@ -159,7 +166,7 @@ async function getLaunchUrl(req, res) {
     let transferResult = null;
 
     if (moveInAmount > 0) {
-      const referenceId = `GM_IN_${userId}_${Date.now()}`.slice(0, 20);
+      const referenceId = buildReferenceId("GMIN", userId);
       try {
         transferResult = await makeTransfer({
           username,
@@ -322,7 +329,7 @@ async function withdrawFromGame(req, res) {
     }
 
     // 3) Transfer from game back to wallet (GAME MOVE OUT)
-    const referenceId = `GM_OUT_${userId}_${Date.now()}`.slice(0, 20);
+    const referenceId = buildReferenceId("GMOUT", userId);
     let transferResult;
     try {
       transferResult = await makeTransfer({
