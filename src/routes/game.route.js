@@ -11,5 +11,12 @@ router.get(
   gameController.getLaunchUrl,
 );
 
+// POST /api/game/withdraw  -> move all balance from game back to wallet
+router.post(
+  "/withdraw",
+  authMiddleware.authMiddleware,
+  gameController.withdrawFromGame,
+);
+
 export default router;
 
