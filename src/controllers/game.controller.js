@@ -428,5 +428,72 @@ async function withdrawFromGame(req, res) {
   }
 }
 
-export default { getLaunchUrl, withdrawFromGame };
+async function getBalances(req, res) {
+  try {
+    ensureGameEnv();
+
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ status: "failed", msg: "Unauthorized" });
+    }
+
+    const providerCode = resolveProviderCode(
+      req.query.p_code ||
+        req.query.providerCode ||
+        req.query.provider ||
+        req.body?.p_code ||
+        req.body?.providerCode,
+    );
+
+    const username = buildUsername(userId);
+    const password = buildPassword();
+
+    // Ensure member exists (mostly for first-time users)
+    try {
+      await ensureProviderMember(username, providerCode);
+    } catch (err) {
+      return res.status(400).json({
+        status: "failed",
+        step: "createMember",
+        providerErrCode: err.code || "UNKNOWN",
+        providerErrMsg: err.message,
+      });
+    }
+
+    const account = await accountModel.findOne({ user: userId });
+    if (!account) {
+      return res.status(404).json({ status: "failed", msg: "Account not found" });
+    }
+
+    let gameBalance = 0;
+    try {
+      gameBalance = await getGameBalance(username, password, providerCode);
+    } catch (err) {
+      return res.status(400).json({
+        status: "failed",
+        step: "getBalance",
+        providerErrCode: err.code || "UNKNOWN",
+        providerErrMsg: err.message,
+      });
+    }
+
+    const walletBalance = Number(account.balance || 0);
+
+    res.json({
+      status: "success",
+      providerCode,
+      walletBalance,
+      gameBalance,
+      totalBalance: walletBalance + gameBalance,
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "failed",
+      msg: "Failed to get balances",
+      error: error.message,
+    });
+  }
+}
+
+export default { getLaunchUrl, withdrawFromGame, getBalances };
 

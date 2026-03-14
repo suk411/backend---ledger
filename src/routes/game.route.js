@@ -4,7 +4,7 @@ import authMiddleware from "../middleware/user.auth.middleware.js";
 
 const router = express.Router();
 
-// GET /api/game/launch?gameId=302&type=SL
+// GET /api/game/launch
 router.get(
   "/launch",
   authMiddleware.authMiddleware,
@@ -16,6 +16,13 @@ router.post(
   "/withdraw",
   authMiddleware.authMiddleware,
   gameController.withdrawFromGame,
+);
+
+// GET /api/game/balance  -> wallet + game balance for a provider
+router.get(
+  "/balance",
+  authMiddleware.authMiddleware,
+  gameController.getBalances,
 );
 
 export default router;
