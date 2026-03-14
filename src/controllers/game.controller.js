@@ -527,6 +527,7 @@ async function syncBetHistory(req, res) {
       inserted: result.inserted,
       updated: result.updated,
       skipped: result.skipped,
+      marked: result.marked,
     });
   } catch (error) {
     res.status(500).json({
@@ -548,13 +549,33 @@ async function getUserBets(req, res) {
     const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 25));
     const skip = (page - 1) * limit;
 
+    const query = { userId };
+
+    if (req.query.site) {
+      query.site = req.query.site;
+    }
+
+    if (req.query.status) {
+      query.status = Number(req.query.status);
+    }
+
+    if (req.query.dateFrom || req.query.dateTo) {
+      query.settleTime = {};
+      if (req.query.dateFrom) {
+        query.settleTime.$gte = new Date(req.query.dateFrom);
+      }
+      if (req.query.dateTo) {
+        query.settleTime.$lte = new Date(req.query.dateTo);
+      }
+    }
+
     const [items, total] = await Promise.all([
-      BetRecord.find({ userId })
+      BetRecord.find(query)
         .sort({ settleTime: -1 })
         .skip(skip)
         .limit(limit)
         .select("-raw -__v"),
-      BetRecord.countDocuments({ userId }),
+      BetRecord.countDocuments(query),
     ]);
 
     res.json({

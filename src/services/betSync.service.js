@@ -15,11 +15,63 @@ import BetRecord from "../models/betRecord.model.js";
 import logger from "../utils/logger.js";
 
 /**
+ * Mark bet records as processed using the provider's mark API.
+ * This prevents fetching the same records again on next sync.
+ *
+ * @param {string[]} ticketIds - Array of ticket IDs to mark
+ * @returns {Promise<{ marked: number, success: boolean }>}
+ */
+async function markBetRecords(ticketIds) {
+  if (!ticketIds || ticketIds.length === 0) {
+    return { marked: 0, success: true };
+  }
+
+  const { GAME_LOG_URL, OPERATOR_CODE, GAME_SECRET_KEY } = process.env;
+
+  const sigSource = OPERATOR_CODE.toLowerCase() + GAME_SECRET_KEY;
+  const signature = crypto
+    .createHash("md5")
+    .update(sigSource)
+    .digest("hex")
+    .toUpperCase();
+
+  const ticketStr = ticketIds.join(",");
+
+  try {
+    const response = await axios.post(
+      `${GAME_LOG_URL}/markbyjson.aspx`,
+      {
+        operatorcode: OPERATOR_CODE.toLowerCase(),
+        ticket: ticketStr,
+        signature,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        timeout: 15000,
+      }
+    );
+
+    const { errCode, errMsg } = response.data || {};
+    if (errCode !== "0") {
+      logger.warn(`[betSync] Mark failed: ${errCode} - ${errMsg}`);
+      return { marked: 0, success: false };
+    }
+
+    return { marked: ticketIds.length, success: true };
+  } catch (e) {
+    logger.error(`[betSync] Mark error: ${e.message}`);
+    return { marked: 0, success: false };
+  }
+}
+
+/**
  * Fetch bet records from the provider and upsert into DB.
  *
  * @param {object} [opts]
  * @param {number|string} [opts.versionKey=0]  Provider version key (0 = fetch all new records)
- * @returns {Promise<{ fetched: number, inserted: number, updated: number, skipped: number }>}
+ * @returns {Promise<{ fetched: number, inserted: number, updated: number, skipped: number, marked: number }>}
  */
 export async function syncBetRecords({ versionKey = 0 } = {}) {
   const { GAME_LOG_URL, OPERATOR_CODE, GAME_SECRET_KEY } = process.env;
@@ -78,6 +130,7 @@ export async function syncBetRecords({ versionKey = 0 } = {}) {
   let inserted = 0;
   let updated = 0;
   let skipped = 0;
+  const ticketIds = [];
 
   for (const r of records) {
     if (!r || typeof r !== "object") {
@@ -89,6 +142,12 @@ export async function syncBetRecords({ versionKey = 0 } = {}) {
     if (!member) {
       skipped += 1;
       continue;
+    }
+
+    // Collect ticket ID for marking (r.id is the AIO bet id)
+    const ticketId = r.id;
+    if (ticketId) {
+      ticketIds.push(ticketId);
     }
 
     // Username pattern: u<userId>
@@ -147,5 +206,15 @@ export async function syncBetRecords({ versionKey = 0 } = {}) {
     }
   }
 
-  return { fetched: records.length, inserted, updated, skipped };
+  // ── 5. Mark records as processed ─────────────────────────────────────────────
+  let marked = 0;
+  if (ticketIds.length > 0) {
+    const markResult = await markBetRecords(ticketIds);
+    marked = markResult.marked;
+    logger.info(
+      `[betSync] Marked ${marked} records (success: ${markResult.success})`,
+    );
+  }
+
+  return { fetched: records.length, inserted, updated, skipped, marked };
 }

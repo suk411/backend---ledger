@@ -29,7 +29,7 @@ async function runSync() {
   try {
     const result = await syncBetRecords({ versionKey: 0 });
     logger.info(
-      `[betSyncScheduler] Sync complete – fetched: ${result.fetched}, inserted: ${result.inserted}, updated: ${result.updated}, skipped: ${result.skipped}`,
+      `[betSyncScheduler] Sync complete – fetched: ${result.fetched}, inserted: ${result.inserted}, updated: ${result.updated}, skipped: ${result.skipped}, marked: ${result.marked}`,
       result,
     );
   } catch (err) {
