@@ -1,6 +1,7 @@
 import express from "express";
 import gameController from "../controllers/game.controller.js";
 import authMiddleware from "../middleware/user.auth.middleware.js";
+import adminMiddleware from "../middleware/admin.auth.middleware.js";
 
 const router = express.Router();
 
@@ -23,6 +24,21 @@ router.get(
   "/balance",
   authMiddleware.authMiddleware,
   gameController.getBalances,
+);
+
+// POST /api/game/sync-bets -> admin only, sync latest bet history from provider
+router.post(
+  "/sync-bets",
+  authMiddleware.authMiddleware,
+  adminMiddleware.adminMiddleware,
+  gameController.syncBetHistory,
+);
+
+// GET /api/game/bets -> user bet history with pagination
+router.get(
+  "/bets",
+  authMiddleware.authMiddleware,
+  gameController.getUserBets,
 );
 
 export default router;
