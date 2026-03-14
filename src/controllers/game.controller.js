@@ -5,15 +5,15 @@ import transactionLedgerModel from "../models/transactionLedger.model.js";
 
 const {
   GAME_API_URL,
-  PROVIDER_CODE,
+  GAME_LOG_URL, // reserved for future use (reports, checkTransaction)
   OPERATOR_CODE,
-  SECRET_KEY,
+  GAME_SECRET_KEY,
 } = process.env;
 
 function ensureGameEnv() {
-  if (!GAME_API_URL || !PROVIDER_CODE || !OPERATOR_CODE || !SECRET_KEY) {
+  if (!GAME_API_URL || !OPERATOR_CODE || !GAME_SECRET_KEY) {
     throw new Error(
-      "Missing game provider env vars (GAME_API_URL, PROVIDER_CODE, OPERATOR_CODE, SECRET_KEY)",
+      "Missing game provider env vars (GAME_API_URL, OPERATOR_CODE, GAME_SECRET_KEY)",
     );
   }
 }
@@ -34,10 +34,16 @@ function buildReferenceId(prefix, userId) {
   return clean.slice(0, 20);
 }
 
-async function ensureProviderMember(username) {
+function resolveProviderCode(raw) {
+  const pc = String(raw || "").trim();
+  if (!pc) return "JE"; // default provider
+  return pc.toUpperCase();
+}
+
+async function ensureProviderMember(username, providerCode) {
   const sig = crypto
     .createHash("md5")
-    .update(OPERATOR_CODE.toLowerCase() + username.toLowerCase() + SECRET_KEY)
+    .update(OPERATOR_CODE.toLowerCase() + username.toLowerCase() + GAME_SECRET_KEY)
     .digest("hex")
     .toUpperCase();
 
@@ -58,17 +64,26 @@ async function ensureProviderMember(username) {
   }
 }
 
-async function makeTransfer({ username, password, referenceId, type, amount }) {
+async function makeTransfer({
+  username,
+  password,
+  referenceId,
+  type,
+  amount,
+  providerCode,
+}) {
   const amountStr = Number(amount || 0).toFixed(2);
+  const pc = resolveProviderCode(providerCode);
+
   const sigSource =
     amountStr +
     OPERATOR_CODE.toLowerCase() +
     password +
-    PROVIDER_CODE.toUpperCase() +
+    pc +
     referenceId +
     String(type) +
     username.toLowerCase() +
-    SECRET_KEY;
+    GAME_SECRET_KEY;
 
   const signature = crypto
     .createHash("md5")
@@ -79,7 +94,7 @@ async function makeTransfer({ username, password, referenceId, type, amount }) {
   const res = await axios.get(`${GAME_API_URL}/makeTransfer.aspx`, {
     params: {
       operatorcode: OPERATOR_CODE.toLowerCase(),
-      providercode: PROVIDER_CODE.toUpperCase(),
+      providercode: pc,
       username,
       password,
       referenceid: referenceId,
@@ -93,13 +108,15 @@ async function makeTransfer({ username, password, referenceId, type, amount }) {
   return res.data;
 }
 
-async function getGameBalance(username, password) {
+async function getGameBalance(username, password, providerCode) {
+  const pc = resolveProviderCode(providerCode);
+
   const sigSource =
     OPERATOR_CODE.toLowerCase() +
     password +
-    PROVIDER_CODE.toUpperCase() +
+    pc +
     username.toLowerCase() +
-    SECRET_KEY;
+    GAME_SECRET_KEY;
 
   const signature = crypto
     .createHash("md5")
@@ -110,7 +127,7 @@ async function getGameBalance(username, password) {
   const res = await axios.get(`${GAME_API_URL}/getBalance.aspx`, {
     params: {
       operatorcode: OPERATOR_CODE.toLowerCase(),
-      providercode: PROVIDER_CODE.toUpperCase(),
+      providercode: pc,
       username,
       password,
       signature,
@@ -136,17 +153,29 @@ async function getLaunchUrl(req, res) {
       return res.status(401).json({ status: "failed", msg: "Unauthorized" });
     }
 
-    const gameId = String(req.query.gameId || "302");
+    // game id: prefer short key g_id, fallback to legacy gameId
+    const gameIdRaw = req.query.g_id || req.query.gameId;
+    if (!gameIdRaw) {
+      return res.status(400).json({
+        status: "failed",
+        msg: "gameId is required",
+      });
+    }
+    const gameId = String(gameIdRaw);
     const type = String(req.query.type || "SL");
     const lang = String(req.query.lang || "en-US");
     const html5 = String(req.query.html5 || "1");
+    // provider: prefer short key p_code, fallback to legacy providerCode/provider
+    const providerCode = resolveProviderCode(
+      req.query.p_code || req.query.providerCode || req.query.provider,
+    );
 
     const username = buildUsername(userId);
     const password = buildPassword();
 
     // 1) Ensure member exists in provider
     try {
-      await ensureProviderMember(username);
+      await ensureProviderMember(username, providerCode);
     } catch (err) {
       return res.status(400).json({
         status: "failed",
@@ -174,6 +203,7 @@ async function getLaunchUrl(req, res) {
           referenceId,
           type: 0, // 0 = deposit into game
           amount: moveInAmount,
+          providerCode,
         });
       } catch (e) {
         return res.status(502).json({
@@ -212,10 +242,10 @@ async function getLaunchUrl(req, res) {
     const sigSource =
       OPERATOR_CODE.toLowerCase() +
       password +
-      PROVIDER_CODE.toUpperCase() +
+      providerCode +
       type +
       username.toLowerCase() +
-      SECRET_KEY;
+      GAME_SECRET_KEY;
 
     const signature = crypto
       .createHash("md5")
@@ -228,7 +258,7 @@ async function getLaunchUrl(req, res) {
       launchRes = await axios.get(`${GAME_API_URL}/launchGames.aspx`, {
         params: {
           operatorcode: OPERATOR_CODE.toLowerCase(),
-          providercode: PROVIDER_CODE.toUpperCase(),
+          providercode: providerCode,
           username,
           password,
           type,
@@ -262,7 +292,7 @@ async function getLaunchUrl(req, res) {
       status: "success",
       gameId,
       type,
-      providerCode: PROVIDER_CODE.toUpperCase(),
+      providerCode,
       gameUrl,
       moveIn: {
         amount: moveInAmount,
@@ -287,12 +317,21 @@ async function withdrawFromGame(req, res) {
       return res.status(401).json({ status: "failed", msg: "Unauthorized" });
     }
 
+    const providerCode = resolveProviderCode(
+      // prefer short keys first: p_code (query/body)
+      req.query.p_code ||
+        req.body?.p_code ||
+        // legacy keys
+        req.query.providerCode ||
+        req.query.provider ||
+        req.body?.providerCode,
+    );
     const username = buildUsername(userId);
     const password = buildPassword();
 
     // 1) Ensure member exists (safety)
     try {
-      await ensureProviderMember(username);
+      await ensureProviderMember(username, providerCode);
     } catch (err) {
       return res.status(400).json({
         status: "failed",
@@ -305,7 +344,7 @@ async function withdrawFromGame(req, res) {
     // 2) Get game balance
     let gameBalance;
     try {
-      gameBalance = await getGameBalance(username, password);
+      gameBalance = await getGameBalance(username, password, providerCode);
     } catch (err) {
       return res.status(400).json({
         status: "failed",
@@ -338,6 +377,7 @@ async function withdrawFromGame(req, res) {
         referenceId,
         type: 1, // 1 = withdraw from game
         amount: gameBalance,
+        providerCode,
       });
     } catch (e) {
       return res.status(502).json({
