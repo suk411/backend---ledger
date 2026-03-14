@@ -24,6 +24,7 @@ async function ensureDefaultVipConfig() {
   const existing = await VipConfig.findOne({});
   if (existing && existing.levels && existing.levels.length) return existing;
   const defaults = [
+    { name: "VIP0", minDeposit: 0, dailyWithdrawLimit: 0, monthlyCheckinBonus: 0, upgradeReward: 0 },
     { name: "VIP 1", minDeposit: 200, dailyWithdrawLimit: 500, monthlyCheckinBonus: 160, upgradeReward: 10 },
     { name: "VIP 2", minDeposit: 400, dailyWithdrawLimit: 1000, monthlyCheckinBonus: 160, upgradeReward: 20 },
     { name: "VIP 3", minDeposit: 1000, dailyWithdrawLimit: 2000, monthlyCheckinBonus: 240, upgradeReward: 30 },

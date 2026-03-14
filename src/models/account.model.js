@@ -13,7 +13,7 @@ const accountSchema = new mongoose.Schema(
     // VIP fields
     vipLevel: {
       type: String,
-      default: "NONE",
+      default: "VIP0",
       index: true,
     },
     vipSince: {

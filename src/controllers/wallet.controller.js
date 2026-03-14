@@ -30,11 +30,11 @@ async function deposit(userId, amount, orderId, remark = "Deposit") {
     // Load VIP config
     const config = await ensureDefaultVipConfig();
     const levels = (config && config.levels) || [];
-    const prevLevelName = account.vipLevel || "NONE";
+    const prevLevelName = account.vipLevel || "VIP0";
     const newTotalDeposits = (account.totalDeposits || 0) + amount;
 
     // Determine new level by minDeposit ascending
-    let newLevel = { name: "NONE", dailyWithdrawLimit: 0, monthlyCheckinBonus: 0, upgradeReward: 0, minDeposit: 0 };
+    let newLevel = { name: "VIP0", dailyWithdrawLimit: 0, monthlyCheckinBonus: 0, upgradeReward: 0, minDeposit: 0 };
     const sortedLevels = [...levels].sort((a, b) => a.minDeposit - b.minDeposit);
     for (const lvl of sortedLevels) {
       if (newTotalDeposits >= lvl.minDeposit) newLevel = lvl;
