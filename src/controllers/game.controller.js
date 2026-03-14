@@ -30,10 +30,10 @@ function buildPassword() {
 }
 
 function buildReferenceId(prefix, userId) {
-  // Provider requires max length 20, use only A–Z0–9
-  const base = `${prefix}${userId}${Date.now()}`;
-  const clean = base.replace(/[^A-Za-z0-9]/g, "");
-  return clean.slice(0, 20);
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const uid = String(userId).slice(-6);
+  return `${prefix}${uid}${timestamp}${random}`.slice(0, 20);
 }
 
 function resolveProviderCode(raw) {
@@ -101,11 +101,8 @@ async function makeTransfer({
     type,
     amount: amountStr,
     signature,
+    referenceid: referenceId,
   };
-
-  if (referenceId) {
-    params.referenceid = referenceId;
-  }
 
   const res = await axios.get(`${GAME_API_URL}/makeTransfer.aspx`, {
     params,
