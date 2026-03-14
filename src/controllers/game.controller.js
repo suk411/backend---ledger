@@ -82,7 +82,7 @@ async function makeTransfer({
     OPERATOR_CODE.toLowerCase() +
     password +
     pc +
-    referenceId +
+    (referenceId || "") +
     String(type) +
     username.toLowerCase() +
     GAME_SECRET_KEY;
@@ -93,17 +93,22 @@ async function makeTransfer({
     .digest("hex")
     .toUpperCase();
 
+  const params = {
+    operatorcode: OPERATOR_CODE.toLowerCase(),
+    providercode: pc,
+    username,
+    password,
+    type,
+    amount: amountStr,
+    signature,
+  };
+
+  if (referenceId) {
+    params.referenceid = referenceId;
+  }
+
   const res = await axios.get(`${GAME_API_URL}/makeTransfer.aspx`, {
-    params: {
-      operatorcode: OPERATOR_CODE.toLowerCase(),
-      providercode: pc,
-      username,
-      password,
-      referenceid: referenceId,
-      type,
-      amount: amountStr,
-      signature,
-    },
+    params,
     timeout: 15000,
   });
 
