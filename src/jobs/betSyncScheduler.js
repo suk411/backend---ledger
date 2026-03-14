@@ -12,7 +12,7 @@
 import { syncBetRecords } from "../services/betSync.service.js";
 import logger from "../utils/logger.js";
 
-const INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+const INTERVAL_MS =  1* 60 * 1000; // 1mint
 
 let isRunning = false; // guard against overlapping runs
 

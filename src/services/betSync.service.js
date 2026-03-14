@@ -126,6 +126,8 @@ export async function syncBetRecords({ versionKey = 0 } = {}) {
     throw new Error(msg);
   }
 
+  logger.info(`[betSync] Fetched ${records.length} records from provider`);
+
   // ── 4. Upsert each record ───────────────────────────────────────────────────
   let inserted = 0;
   let updated = 0;
@@ -150,17 +152,7 @@ export async function syncBetRecords({ versionKey = 0 } = {}) {
       ticketIds.push(ticketId);
     }
 
-    // Username pattern: u<userId>
-    let userId = 0;
-    if (member.startsWith("u")) {
-      const idNum = Number(member.slice(1));
-      if (!Number.isNaN(idNum) && idNum > 0) userId = idNum;
-    }
-    if (!userId) {
-      skipped += 1;
-      continue;
-    }
-
+    // Store member directly - no need to parse userId
     const site = String(r.site || "").trim();
     const refNo = String(r.ref_no || "").trim();
     if (!site || !refNo) {
@@ -172,10 +164,9 @@ export async function syncBetRecords({ versionKey = 0 } = {}) {
     const settleTime = r.end_time ? new Date(r.end_time) : betTime;
 
     const doc = {
-      userId,
+      member,
       site,
       product: String(r.product || ""),
-      member,
       gameId: String(r.game_id || ""),
       refNo,
       betTime,

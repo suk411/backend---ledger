@@ -545,11 +545,12 @@ async function getUserBets(req, res) {
       return res.status(401).json({ status: "failed", msg: "Unauthorized" });
     }
 
+    const member = `u${userId}`.toLowerCase();
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 25));
     const skip = (page - 1) * limit;
 
-    const query = { userId };
+    const query = { member };
 
     if (req.query.site) {
       query.site = req.query.site;
@@ -581,6 +582,7 @@ async function getUserBets(req, res) {
     res.json({
       status: "success",
       userId,
+      member,
       page,
       limit,
       total,
